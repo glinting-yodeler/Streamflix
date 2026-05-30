@@ -25,202 +25,368 @@ st.set_page_config(
 
 
 # ============================================================
-# GLOBAL STYLES
+# DESIGN SYSTEM CSS
 # ============================================================
 
 st.markdown(
     """
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
+
+        :root {
+            --background: #0A0A0A;
+            --foreground: #FAFAFA;
+            --muted: #1A1A1A;
+            --muted-foreground: #737373;
+            --accent: #FF3D00;
+            --accent-foreground: #0A0A0A;
+            --border: #262626;
+            --input: #1A1A1A;
+            --card: #0F0F0F;
+            --card-foreground: #FAFAFA;
+            --ring: #FF3D00;
+        }
 
         html, body, [class*="css"] {
-            font-family: 'Inter', sans-serif;
+            font-family: "Inter", system-ui, sans-serif;
+            letter-spacing: -0.01em;
         }
 
         .stApp {
-            background:
-                radial-gradient(circle at 15% 10%, rgba(255, 77, 77, 0.14), transparent 28%),
-                radial-gradient(circle at 85% 20%, rgba(115, 80, 255, 0.16), transparent 30%),
-                radial-gradient(circle at 50% 90%, rgba(0, 229, 255, 0.08), transparent 28%),
-                linear-gradient(135deg, #07070b 0%, #101018 45%, #07070b 100%);
-            color: #f4f4f5;
+            background-color: var(--background);
+            color: var(--foreground);
+        }
+
+        .stApp::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.035;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 250 250' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        .main .block-container {
+            padding-top: 2rem;
+            padding-left: 3.5rem;
+            padding-right: 3.5rem;
+            max-width: 1440px;
         }
 
         section[data-testid="stSidebar"] {
-            background: linear-gradient(180deg, #0b0b12 0%, #11111c 100%);
-            border-right: 1px solid rgba(255,255,255,0.08);
+            background: var(--background);
+            border-right: 1px solid var(--border);
         }
 
         section[data-testid="stSidebar"] * {
-            color: #f4f4f5;
+            color: var(--foreground);
+        }
+
+        section[data-testid="stSidebar"] [role="radiogroup"] label {
+            border-bottom: 1px solid var(--border);
+            padding: 0.9rem 0;
+            transition: 150ms ease;
+        }
+
+        section[data-testid="stSidebar"] [role="radiogroup"] label:hover {
+            color: var(--accent) !important;
         }
 
         div[data-testid="stMetric"] {
-            background: rgba(255, 255, 255, 0.055);
-            border: 1px solid rgba(255, 255, 255, 0.10);
-            padding: 18px 18px 16px 18px;
-            border-radius: 20px;
-            box-shadow: 0 12px 34px rgba(0,0,0,0.22);
-            backdrop-filter: blur(18px);
+            background: transparent;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            padding: 1.3rem 0;
+            box-shadow: none;
         }
 
         div[data-testid="stMetric"] label {
-            color: rgba(244,244,245,0.72) !important;
-            font-size: 0.85rem !important;
+            color: var(--muted-foreground) !important;
+            font-family: "JetBrains Mono", monospace !important;
+            font-size: 0.72rem !important;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
         }
 
         div[data-testid="stMetric"] [data-testid="stMetricValue"] {
-            color: #ffffff !important;
-            font-size: 1.9rem !important;
-            font-weight: 800 !important;
+            color: var(--foreground) !important;
+            font-family: "Inter Tight", sans-serif !important;
+            font-size: 2.65rem !important;
+            font-weight: 900 !important;
+            letter-spacing: -0.06em;
+            line-height: 1;
         }
 
-        .hero-card {
-            padding: 30px;
-            border-radius: 28px;
-            background:
-                linear-gradient(135deg, rgba(255,255,255,0.10), rgba(255,255,255,0.035)),
-                linear-gradient(135deg, rgba(255,65,65,0.16), rgba(90,70,255,0.10));
-            border: 1px solid rgba(255,255,255,0.12);
-            box-shadow: 0 20px 70px rgba(0,0,0,0.32);
-            margin-bottom: 24px;
+        .hero {
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            padding: 4.2rem 0 3.4rem 0;
+            margin-bottom: 3.25rem;
+            position: relative;
+        }
+
+        .eyebrow {
+            font-family: "JetBrains Mono", monospace;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-bottom: 1.1rem;
         }
 
         .hero-title {
-            font-size: 2.45rem;
-            line-height: 1.05;
-            font-weight: 850;
-            letter-spacing: -1.4px;
-            margin-bottom: 10px;
+            font-family: "Inter Tight", sans-serif;
+            font-size: clamp(4rem, 10vw, 9.5rem);
+            line-height: 0.9;
+            font-weight: 900;
+            letter-spacing: -0.065em;
+            max-width: 1150px;
+            margin: 0;
+        }
+
+        .hero-title .accent {
+            color: var(--accent);
         }
 
         .hero-subtitle {
-            color: rgba(244,244,245,0.74);
-            font-size: 1.02rem;
-            max-width: 980px;
-            line-height: 1.7;
+            max-width: 760px;
+            margin-top: 1.6rem;
+            color: var(--muted-foreground);
+            font-size: 1.15rem;
+            line-height: 1.75;
         }
 
-        .pill-row {
-            margin-top: 18px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 2.5rem;
+            align-items: end;
         }
 
-        .pill {
-            padding: 8px 12px;
-            border-radius: 999px;
-            background: rgba(255,255,255,0.07);
-            border: 1px solid rgba(255,255,255,0.12);
-            color: rgba(255,255,255,0.86);
-            font-size: 0.84rem;
-            font-weight: 600;
+        .stack-list {
+            border-left: 2px solid var(--accent);
+            padding-left: 1rem;
+            font-family: "JetBrains Mono", monospace;
+            color: var(--muted-foreground);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-size: 0.74rem;
+            line-height: 2;
+        }
+
+        .section-kicker {
+            color: var(--accent);
+            font-family: "JetBrains Mono", monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            font-size: 0.72rem;
+            font-weight: 700;
+            margin-top: 2.2rem;
+            margin-bottom: 0.8rem;
         }
 
         .section-title {
-            font-size: 1.25rem;
-            font-weight: 800;
-            margin: 22px 0 10px 0;
-            letter-spacing: -0.3px;
+            font-family: "Inter Tight", sans-serif;
+            font-size: clamp(2.4rem, 5vw, 5.25rem);
+            font-weight: 900;
+            letter-spacing: -0.06em;
+            line-height: 0.95;
+            margin-bottom: 1rem;
         }
 
         .section-caption {
-            color: rgba(244,244,245,0.64);
-            font-size: 0.92rem;
-            margin-bottom: 14px;
+            color: var(--muted-foreground);
+            font-size: 1rem;
+            line-height: 1.7;
+            max-width: 760px;
+            margin-bottom: 1.5rem;
         }
 
-        .glass-card {
-            background: rgba(255,255,255,0.055);
-            border: 1px solid rgba(255,255,255,0.10);
-            border-radius: 22px;
-            padding: 20px;
-            box-shadow: 0 14px 45px rgba(0,0,0,0.22);
-            backdrop-filter: blur(18px);
-            margin-bottom: 18px;
+        .rule {
+            height: 1px;
+            background: var(--border);
+            margin: 2.5rem 0;
+        }
+
+        .editorial-card {
+            background: transparent;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            padding: 1.5rem 0;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .editorial-card::before {
+            content: "";
+            position: absolute;
+            top: -1px;
+            left: 0;
+            width: 64px;
+            height: 2px;
+            background: var(--accent);
         }
 
         .insight-card {
-            background: linear-gradient(135deg, rgba(255,77,77,0.13), rgba(115,80,255,0.10));
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 22px;
-            padding: 22px;
-            box-shadow: 0 14px 45px rgba(0,0,0,0.25);
-            margin-bottom: 18px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .insight-card::before {
+            content: "";
+            position: absolute;
+            top: -1px;
+            left: -1px;
+            width: 72px;
+            height: 3px;
+            background: var(--accent);
+        }
+
+        .insight-card h3,
+        .insight-card h2,
+        .genai-card h2,
+        .genai-card h3 {
+            font-family: "Inter Tight", sans-serif;
+            letter-spacing: -0.04em;
+            line-height: 1;
         }
 
         .genai-card {
-            background:
-                linear-gradient(135deg, rgba(88, 166, 255, 0.12), rgba(168, 85, 247, 0.10)),
-                rgba(255,255,255,0.055);
-            border: 1px solid rgba(168, 85, 247, 0.24);
-            border-radius: 24px;
-            padding: 22px;
-            box-shadow: 0 16px 55px rgba(0,0,0,0.28);
-            margin-bottom: 18px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--accent);
+            padding: 1.6rem;
+            margin-bottom: 1.5rem;
         }
 
-        .success-chip {
-            display: inline-block;
-            padding: 6px 10px;
-            border-radius: 999px;
-            background: rgba(34,197,94,0.13);
-            color: #86efac;
-            border: 1px solid rgba(34,197,94,0.25);
+        .pull-quote {
+            font-family: "Playfair Display", Georgia, serif;
+            font-size: clamp(1.8rem, 3vw, 3rem);
+            line-height: 1.12;
+            letter-spacing: -0.03em;
+            color: var(--foreground);
+            border-left: 3px solid var(--accent);
+            padding-left: 1rem;
+            margin: 1rem 0;
+        }
+
+        .muted {
+            color: var(--muted-foreground);
+        }
+
+        .mono-label {
+            font-family: "JetBrains Mono", monospace;
+            color: var(--muted-foreground);
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            font-size: 0.72rem;
             font-weight: 700;
-            font-size: 0.78rem;
         }
 
-        .warn-chip {
-            display: inline-block;
-            padding: 6px 10px;
-            border-radius: 999px;
-            background: rgba(245,158,11,0.13);
-            color: #fcd34d;
-            border: 1px solid rgba(245,158,11,0.25);
-            font-weight: 700;
-            font-size: 0.78rem;
+        .chip-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-top: 1.2rem;
         }
 
-        .danger-chip {
-            display: inline-block;
-            padding: 6px 10px;
-            border-radius: 999px;
-            background: rgba(239,68,68,0.13);
-            color: #fca5a5;
-            border: 1px solid rgba(239,68,68,0.25);
-            font-weight: 700;
-            font-size: 0.78rem;
+        .chip {
+            border: 1px solid var(--border);
+            padding: 0.55rem 0.75rem;
+            font-family: "JetBrains Mono", monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-size: 0.68rem;
+            color: var(--muted-foreground);
         }
 
-        .small-muted {
-            color: rgba(244,244,245,0.60);
-            font-size: 0.88rem;
+        .chip-accent {
+            color: var(--accent);
+            border-color: var(--accent);
         }
 
-        .footer-note {
-            color: rgba(244,244,245,0.55);
-            font-size: 0.82rem;
-            margin-top: 24px;
+        .empty-state {
+            border: 1px solid var(--border);
+            background: var(--card);
+            padding: 2rem;
+            margin: 1.4rem 0;
         }
 
-        .stDataFrame {
-            border-radius: 18px;
-            overflow: hidden;
+        .empty-state h3 {
+            font-family: "Inter Tight", sans-serif;
+            font-size: 2rem;
+            letter-spacing: -0.05em;
+            margin: 0 0 0.5rem 0;
+        }
+
+        .empty-state p {
+            color: var(--muted-foreground);
+            margin: 0;
+            line-height: 1.6;
+        }
+
+        div[data-testid="stDataFrame"] {
+            border: 1px solid var(--border);
         }
 
         div[data-testid="stAlert"] {
-            border-radius: 18px;
+            border-radius: 0 !important;
+            border: 1px solid var(--border);
         }
 
-        button[kind="secondary"] {
-            border-radius: 999px !important;
+        .stButton > button {
+            border-radius: 0 !important;
+            border: 1px solid var(--foreground);
+            background: transparent;
+            color: var(--foreground);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-family: "JetBrains Mono", monospace;
+            transition: 150ms ease;
         }
 
-        .block-container {
-            padding-top: 2rem;
-            padding-bottom: 3rem;
+        .stButton > button:hover {
+            background: var(--foreground);
+            color: var(--background);
+            border-color: var(--foreground);
+        }
+
+        input, textarea {
+            border-radius: 0 !important;
+            background: var(--input) !important;
+            border: 1px solid var(--border) !important;
+            color: var(--foreground) !important;
+        }
+
+        .footer-note {
+            border-top: 1px solid var(--border);
+            margin-top: 3rem;
+            padding-top: 1.2rem;
+            color: var(--muted-foreground);
+            font-family: "JetBrains Mono", monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-size: 0.68rem;
+        }
+
+        @media (max-width: 900px) {
+            .main .block-container {
+                padding-left: 1.4rem;
+                padding-right: 1.4rem;
+            }
+
+            .hero-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-title {
+                font-size: clamp(3.4rem, 16vw, 6rem);
+            }
         }
     </style>
     """,
@@ -270,12 +436,61 @@ def format_money(value):
         return "PKR 0"
 
 
+def page_header(kicker, title, subtitle, chips=None):
+    chip_html = ""
+    if chips:
+        chip_html = '<div class="chip-row">' + "".join(
+            f'<span class="chip">{chip}</span>' for chip in chips
+        ) + "</div>"
+
+    st.markdown(
+        f"""
+        <div class="editorial-card">
+            <div class="section-kicker">{kicker}</div>
+            <div class="section-title">{title}</div>
+            <div class="section-caption">{subtitle}</div>
+            {chip_html}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def empty_state(title, message):
     st.markdown(
         f"""
-        <div class="glass-card">
-            <h3 style="margin:0 0 8px 0;">{title}</h3>
-            <p class="small-muted" style="margin:0;">{message}</p>
+        <div class="empty-state">
+            <h3>{title}</h3>
+            <p>{message}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def insight_card(title, body, kicker="Insight"):
+    st.markdown(
+        f"""
+        <div class="insight-card">
+            <div class="mono-label">{kicker}</div>
+            <h3>{title}</h3>
+            <p class="muted">{body}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def genai_card(title, body, subtitle=None):
+    subtitle_html = f'<p class="mono-label">{subtitle}</p>' if subtitle else ""
+    st.markdown(
+        f"""
+        <div class="genai-card">
+            {subtitle_html}
+            <h2>{title}</h2>
+            <div style="white-space: pre-wrap; line-height: 1.75; color: rgba(250,250,250,0.9);">
+            {body}
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -287,11 +502,22 @@ def plotly_theme(fig, height=420):
         height=height,
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#f4f4f5", family="Inter"),
-        margin=dict(l=20, r=20, t=50, b=20),
-        legend=dict(bgcolor="rgba(255,255,255,0)", font=dict(color="#f4f4f5")),
-        xaxis=dict(gridcolor="rgba(255,255,255,0.06)", zerolinecolor="rgba(255,255,255,0.08)"),
-        yaxis=dict(gridcolor="rgba(255,255,255,0.06)", zerolinecolor="rgba(255,255,255,0.08)"),
+        font=dict(color="#FAFAFA", family="Inter"),
+        margin=dict(l=20, r=20, t=54, b=24),
+        legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(color="#FAFAFA")),
+        title=dict(font=dict(size=18, family="Inter Tight", color="#FAFAFA")),
+        xaxis=dict(
+            gridcolor="rgba(250,250,250,0.06)",
+            zerolinecolor="rgba(250,250,250,0.08)",
+            linecolor="#262626",
+            tickfont=dict(color="#737373"),
+        ),
+        yaxis=dict(
+            gridcolor="rgba(250,250,250,0.06)",
+            zerolinecolor="rgba(250,250,250,0.08)",
+            linecolor="#262626",
+            tickfont=dict(color="#737373"),
+        ),
     )
     return fig
 
@@ -372,7 +598,7 @@ def classify_question_to_sql(question):
 
 
 # ============================================================
-# LOAD TABLES
+# LOAD DATA
 # ============================================================
 
 daily = load_table("daily_metrics")
@@ -401,12 +627,10 @@ clean_business = load_table("clean_business_events")
 # ============================================================
 
 with st.sidebar:
-    st.markdown("## 🎬 StreamFlix DE")
+    st.markdown("## STREAMFLIX")
     st.markdown(
         """
-        <p class="small-muted">
-        STARZPLAY-inspired streaming data engineering, ML, and GenAI project.
-        </p>
+        <div class="mono-label">Data Engineering × ML × GenAI</div>
         """,
         unsafe_allow_html=True,
     )
@@ -427,16 +651,15 @@ with st.sidebar:
     )
 
     st.markdown("---")
-    st.markdown("### System Stack")
+    st.markdown("### STACK")
     st.markdown(
         """
-        <div class="pill-row">
-            <span class="pill">Kafka / Redpanda</span>
-            <span class="pill">PostgreSQL</span>
-            <span class="pill">Airflow</span>
-            <span class="pill">Scikit-learn</span>
-            <span class="pill">Gemini API</span>
-            <span class="pill">Streamlit</span>
+        <div class="chip-row">
+            <span class="chip chip-accent">Kafka</span>
+            <span class="chip">Postgres</span>
+            <span class="chip">Airflow</span>
+            <span class="chip">Sklearn</span>
+            <span class="chip">Gemini</span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -444,10 +667,10 @@ with st.sidebar:
 
     st.markdown("---")
     if not raw.empty:
-        st.markdown('<span class="success-chip">● Data online</span>', unsafe_allow_html=True)
+        st.markdown('<div class="mono-label" style="color:#FF3D00;">● Data Online</div>', unsafe_allow_html=True)
         st.caption(f"{len(raw):,} raw events loaded")
     else:
-        st.markdown('<span class="warn-chip">● Waiting for events</span>', unsafe_allow_html=True)
+        st.markdown('<div class="mono-label">● Waiting For Events</div>', unsafe_allow_html=True)
         st.caption("Run producer, consumer, then pipeline.")
 
 
@@ -457,22 +680,27 @@ with st.sidebar:
 
 st.markdown(
     """
-    <div class="hero-card">
-        <div class="hero-title">OTT Streaming Intelligence Platform</div>
-        <div class="hero-subtitle">
-            A STARZPLAY-inspired data engineering project that streams watch, search, payment,
-            subscription, and playback-quality events through Kafka-compatible Redpanda,
-            transforms them using Airflow pipelines, and powers business analytics,
-            churn intelligence, hybrid recommendations, and Gemini-powered GenAI insights.
+    <section class="hero">
+        <div class="hero-grid">
+            <div>
+                <div class="eyebrow">OTT intelligence system / STARZPLAY-inspired</div>
+                <h1 class="hero-title">STREAMING<br><span class="accent">DATA</span><br>COMMAND.</h1>
+                <p class="hero-subtitle">
+                    A bold analytics interface for a Kafka-powered OTT platform:
+                    ingestion, warehouse modeling, churn intelligence, hybrid recommendations,
+                    Gemini-powered GenAI insights, and pipeline observability.
+                </p>
+            </div>
+            <div class="stack-list">
+                Redpanda event stream<br>
+                PostgreSQL warehouse<br>
+                Airflow orchestration<br>
+                Churn prediction<br>
+                Hybrid recommender<br>
+                Gemini GenAI studio
+            </div>
         </div>
-        <div class="pill-row">
-            <span class="pill">Real-time event ingestion</span>
-            <span class="pill">Batch analytics pipeline</span>
-            <span class="pill">Churn prediction</span>
-            <span class="pill">Hybrid recommendation engine</span>
-            <span class="pill">Gemini GenAI Studio</span>
-        </div>
-    </div>
+    </section>
     """,
     unsafe_allow_html=True,
 )
@@ -483,6 +711,13 @@ st.markdown(
 # ============================================================
 
 if page == "Executive Overview":
+    page_header(
+        "01 / Executive Overview",
+        "THE PLATFORM AT A GLANCE.",
+        "A leadership-level view of activity, revenue, engagement, and regional demand.",
+        ["Watch time", "Revenue", "Completion", "Regional demand"],
+    )
+
     if daily.empty:
         empty_state("No metrics yet", "Run producer + consumer, then run src.run_pipeline.")
     else:
@@ -498,11 +733,12 @@ if page == "Executive Overview":
         c1, c2, c3, c4, c5 = st.columns(5)
         c1.metric("Active Users", format_number(active_users))
         c2.metric("Watch Hours", f"{float(total_watch_minutes) / 60:,.1f}")
-        c3.metric("Avg Completion", f"{float(avg_completion):.1%}")
+        c3.metric("Completion", f"{float(avg_completion):.1%}")
         c4.metric("Revenue", format_money(total_revenue))
-        c5.metric("Payment Failures", format_number(payment_failures))
+        c5.metric("Failures", format_number(payment_failures))
 
-        st.markdown('<div class="section-title">Platform Activity Trend</div>', unsafe_allow_html=True)
+        st.markdown('<div class="rule"></div>', unsafe_allow_html=True)
+
         fig = go.Figure()
         fig.add_trace(
             go.Scatter(
@@ -510,21 +746,27 @@ if page == "Executive Overview":
                 y=daily_sorted["total_watch_minutes"],
                 mode="lines+markers",
                 name="Watch Minutes",
-                line=dict(width=4),
-                marker=dict(size=8),
+                line=dict(width=3, color="#FF3D00"),
+                marker=dict(size=7, color="#FAFAFA"),
             )
         )
-        fig = plotly_theme(fig, height=420)
+        fig = plotly_theme(fig, height=430)
         fig.update_layout(title="Daily Watch Minutes")
         st.plotly_chart(fig, use_container_width=True)
 
-        left, right = st.columns([1.1, 0.9])
+        left, right = st.columns([1.15, 0.85])
 
         with left:
-            st.markdown('<div class="section-title">Country Performance</div>', unsafe_allow_html=True)
             if not country.empty and "country" in country.columns:
                 country_sorted = country.sort_values("total_watch_minutes", ascending=False)
-                fig = px.bar(country_sorted, x="country", y="total_watch_minutes", text_auto=True, title="Watch Time by Country")
+                fig = px.bar(
+                    country_sorted,
+                    x="country",
+                    y="total_watch_minutes",
+                    text_auto=True,
+                    title="Watch Time By Country",
+                )
+                fig.update_traces(marker_color="#FF3D00")
                 fig = plotly_theme(fig)
                 st.plotly_chart(fig, use_container_width=True)
 
@@ -533,25 +775,10 @@ if page == "Executive Overview":
             if not country.empty and "country" in country.columns:
                 best_country = country.sort_values("total_watch_minutes", ascending=False).iloc[0]["country"]
 
-            st.markdown(
-                f"""
-                <div class="insight-card">
-                    <h3 style="margin-top:0;">Executive Readout</h3>
-                    <p>
-                        The platform currently shows <b>{format_number(active_users)}</b> active users and
-                        <b>{float(total_watch_minutes) / 60:,.1f}</b> total watch hours.
-                    </p>
-                    <p>
-                        The strongest country by watch-time contribution is <b>{best_country}</b>.
-                        Average completion is <b>{float(avg_completion):.1%}</b>.
-                    </p>
-                    <p class="small-muted">
-                        A streaming business can use these signals to understand regional demand,
-                        content-market fit, and retention quality.
-                    </p>
-                </div>
-                """,
-                unsafe_allow_html=True,
+            insight_card(
+                "Regional demand is visible.",
+                f"The strongest watch-time market is {best_country}. The platform currently shows {format_number(active_users)} active users and {float(total_watch_minutes) / 60:,.1f} watch hours. Completion rate sits at {float(avg_completion):.1%}, which acts as a content-market fit signal.",
+                "Executive readout",
             )
 
 
@@ -560,15 +787,16 @@ if page == "Executive Overview":
 # ============================================================
 
 elif page == "Content Performance":
+    page_header(
+        "02 / Content Performance",
+        "CONTENT IS THE PRODUCT.",
+        "Understand what users actually complete, revisit, and spend time watching.",
+        ["Catalog", "Completion", "Genre demand", "Viewer touchpoints"],
+    )
+
     if content.empty:
         empty_state("No content metrics yet", "Run the analytics pipeline to build content_performance.")
     else:
-        st.markdown('<div class="section-title">Content Command Center</div>', unsafe_allow_html=True)
-        st.markdown(
-            '<div class="section-caption">Analyze what users watch, complete, and return to across genres and languages.</div>',
-            unsafe_allow_html=True,
-        )
-
         top_content = content.sort_values("popularity_score", ascending=False).head(1).iloc[0]
         total_titles = len(content)
         avg_completion = content["avg_completion_rate"].mean() if "avg_completion_rate" in content.columns else 0
@@ -577,9 +805,9 @@ elif page == "Content Performance":
 
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Catalog Titles", format_number(total_titles))
-        c2.metric("Total Watch Hours", f"{float(total_watch) / 60:,.1f}")
+        c2.metric("Watch Hours", f"{float(total_watch) / 60:,.1f}")
         c3.metric("Avg Completion", f"{float(avg_completion):.1%}")
-        c4.metric("Viewer Touchpoints", format_number(unique_viewers))
+        c4.metric("Touchpoints", format_number(unique_viewers))
 
         left, right = st.columns([1.25, 0.75])
 
@@ -590,27 +818,17 @@ elif page == "Content Performance":
                 x="title",
                 y="total_watch_minutes",
                 color="genre" if "genre" in chart_data.columns else None,
-                title="Top Content by Watch Time",
+                title="Top Content By Watch Time",
             )
             fig.update_xaxes(tickangle=-35)
             fig = plotly_theme(fig, height=460)
             st.plotly_chart(fig, use_container_width=True)
 
         with right:
-            st.markdown(
-                f"""
-                <div class="insight-card">
-                    <h3 style="margin-top:0;">Top Performing Title</h3>
-                    <h2 style="margin-bottom:6px;">{top_content.get("title", "N/A")}</h2>
-                    <p class="small-muted">Genre: {top_content.get("genre", "N/A")} · Language: {top_content.get("language", "N/A")}</p>
-                    <p>
-                        Popularity score: <b>{top_content.get("popularity_score", 0):,.2f}</b><br>
-                        Watch minutes: <b>{top_content.get("total_watch_minutes", 0):,.0f}</b><br>
-                        Completion rate: <b>{top_content.get("avg_completion_rate", 0):.1%}</b>
-                    </p>
-                </div>
-                """,
-                unsafe_allow_html=True,
+            insight_card(
+                str(top_content.get("title", "N/A")),
+                f"Genre: {top_content.get('genre', 'N/A')} · Language: {top_content.get('language', 'N/A')} · Popularity score: {top_content.get('popularity_score', 0):,.2f}. This is the leading title by the current scoring model.",
+                "Top performing title",
             )
 
         fig2 = px.scatter(
@@ -638,7 +856,11 @@ elif page == "Content Performance":
             ]
             if col in content.columns
         ]
-        st.dataframe(content.sort_values("popularity_score", ascending=False)[show_cols].head(30), use_container_width=True, hide_index=True)
+        st.dataframe(
+            content.sort_values("popularity_score", ascending=False)[show_cols].head(30),
+            use_container_width=True,
+            hide_index=True,
+        )
 
 
 # ============================================================
@@ -646,21 +868,26 @@ elif page == "Content Performance":
 # ============================================================
 
 elif page == "Churn Intelligence":
+    page_header(
+        "03 / Churn Intelligence",
+        "RETENTION BEFORE CANCELLATION.",
+        "A machine-learning layer that turns behavioral signals into churn risk, reasons, and actions.",
+        ["Model comparison", "Risk scoring", "Feature importance", "Retention actions"],
+    )
+
     if churn.empty:
         empty_state("No churn predictions yet", "Run the ML pipeline to generate churn_predictions.")
     else:
-        st.markdown('<div class="section-title">Churn Intelligence Center</div>', unsafe_allow_html=True)
-
         high_risk = len(churn[churn["risk_level"].str.lower() == "high"]) if "risk_level" in churn.columns else 0
         medium_risk = len(churn[churn["risk_level"].str.lower() == "medium"]) if "risk_level" in churn.columns else 0
         low_risk = len(churn[churn["risk_level"].str.lower() == "low"]) if "risk_level" in churn.columns else 0
         avg_churn_prob = churn["churn_probability"].mean() if "churn_probability" in churn.columns else 0
 
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("High-Risk Users", format_number(high_risk))
-        c2.metric("Medium-Risk Users", format_number(medium_risk))
-        c3.metric("Low-Risk Users", format_number(low_risk))
-        c4.metric("Avg Churn Risk", f"{float(avg_churn_prob):.1%}")
+        c1.metric("High Risk", format_number(high_risk))
+        c2.metric("Medium Risk", format_number(medium_risk))
+        c3.metric("Low Risk", format_number(low_risk))
+        c4.metric("Avg Risk", f"{float(avg_churn_prob):.1%}")
 
         if not churn_metrics.empty:
             selected = churn_metrics[churn_metrics["selected_model"] == True]
@@ -689,12 +916,10 @@ elif page == "Churn Intelligence":
                 if "auc" in model_table.columns:
                     model_table["auc"] = model_table["auc"].map(lambda x: f"{float(x):.3f}")
 
-                st.markdown('<div class="section-title">Candidate Model Comparison</div>', unsafe_allow_html=True)
+                st.markdown('<div class="section-kicker">Candidate models</div>', unsafe_allow_html=True)
                 st.dataframe(model_table, use_container_width=True, hide_index=True)
 
             with right:
-                st.markdown('<div class="section-title">Confusion Matrix</div>', unsafe_allow_html=True)
-
                 tn = int(best.get("true_negatives", 0))
                 fp = int(best.get("false_positives", 0))
                 fn = int(best.get("false_negatives", 0))
@@ -735,11 +960,16 @@ elif page == "Churn Intelligence":
 
         if not churn_importance.empty:
             imp = churn_importance.sort_values("importance", ascending=False).head(15)
-            fig = px.bar(imp.sort_values("importance"), x="importance", y="feature_name", orientation="h", title="Top Churn Drivers")
+            fig = px.bar(
+                imp.sort_values("importance"),
+                x="importance",
+                y="feature_name",
+                orientation="h",
+                title="Top Churn Drivers",
+            )
+            fig.update_traces(marker_color="#FF3D00")
             fig = plotly_theme(fig, height=500)
             st.plotly_chart(fig, use_container_width=True)
-
-        st.markdown('<div class="section-title">Retention Action Queue</div>', unsafe_allow_html=True)
 
         top_users = churn.sort_values("churn_probability", ascending=False).head(40).copy()
         if "churn_probability" in top_users.columns:
@@ -762,6 +992,7 @@ elif page == "Churn Intelligence":
             "friction_score",
         ]
         existing_cols = [c for c in preferred_cols if c in top_users.columns]
+        st.markdown('<div class="section-kicker">Retention action queue</div>', unsafe_allow_html=True)
         st.dataframe(top_users[existing_cols], use_container_width=True, hide_index=True)
 
 
@@ -770,15 +1001,16 @@ elif page == "Churn Intelligence":
 # ============================================================
 
 elif page == "Recommendation Engine":
+    page_header(
+        "04 / Recommendation Engine",
+        "PERSONALIZATION IS RETENTION.",
+        "Hybrid recommendation intelligence using collaborative filtering, content similarity, country trends, and popularity.",
+        ["User CF", "Item CF", "SVD", "TF-IDF", "Country trending"],
+    )
+
     if recs.empty:
         empty_state("No recommendations yet", "Run the recommendation pipeline to populate the recommendations table.")
     else:
-        st.markdown('<div class="section-title">Hybrid Recommendation Intelligence</div>', unsafe_allow_html=True)
-        st.markdown(
-            '<div class="section-caption">Uses user-based CF, item-based CF, model-based matrix factorization, content similarity, country trends, and popularity signals.</div>',
-            unsafe_allow_html=True,
-        )
-
         total_recs = len(recs)
         total_users = recs["user_id"].nunique() if "user_id" in recs.columns else 0
         avg_score = recs["score"].mean() if "score" in recs.columns else 0
@@ -788,18 +1020,18 @@ elif page == "Recommendation Engine":
             catalog_coverage = recommendation_metrics.sort_values("generated_at").iloc[-1].get("catalog_coverage", 0)
 
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Recommended Items", format_number(total_recs))
+        c1.metric("Recommended", format_number(total_recs))
         c2.metric("Users Covered", format_number(total_users))
-        c3.metric("Avg Hybrid Score", f"{float(avg_score):.3f}")
-        c4.metric("Catalog Coverage", f"{float(catalog_coverage):.1%}")
+        c3.metric("Hybrid Score", f"{float(avg_score):.3f}")
+        c4.metric("Catalog", f"{float(catalog_coverage):.1%}")
 
         if not recommendation_metrics.empty:
             latest_metrics = recommendation_metrics.sort_values("generated_at").iloc[-1]
             s1, s2, s3, s4 = st.columns(4)
-            s1.metric("Model-Based CF", "Enabled" if latest_metrics.get("model_based_enabled", False) else "Off")
-            s2.metric("User-Based CF", "Enabled" if latest_metrics.get("user_cf_enabled", False) else "Off")
-            s3.metric("Item-Based CF", "Enabled" if latest_metrics.get("item_cf_enabled", False) else "Off")
-            s4.metric("Content-Based", "Enabled" if latest_metrics.get("content_based_enabled", False) else "Off")
+            s1.metric("Model CF", "Enabled" if latest_metrics.get("model_based_enabled", False) else "Off")
+            s2.metric("User CF", "Enabled" if latest_metrics.get("user_cf_enabled", False) else "Off")
+            s3.metric("Item CF", "Enabled" if latest_metrics.get("item_cf_enabled", False) else "Off")
+            s4.metric("Content", "Enabled" if latest_metrics.get("content_based_enabled", False) else "Off")
 
         users = sorted(recs["user_id"].unique()) if "user_id" in recs.columns else []
         selected_user = st.selectbox("Select user", users)
@@ -817,39 +1049,24 @@ elif page == "Recommendation Engine":
                 if col in display_recs.columns:
                     display_recs[col] = display_recs[col].map(lambda x: f"{float(x):.3f}")
 
-            st.markdown('<div class="section-title">Top Personalized Recommendations</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-kicker">Top personalized recommendations</div>', unsafe_allow_html=True)
             st.dataframe(display_recs, use_container_width=True, hide_index=True)
 
         with right:
             if not user_recs.empty:
                 best = user_recs.iloc[0]
-                st.markdown(
-                    f"""
-                    <div class="insight-card">
-                        <h3 style="margin-top:0;">Best Next Watch</h3>
-                        <h2 style="margin-bottom:6px;">{best.get("title", "N/A")}</h2>
-                        <p class="small-muted">
-                            {best.get("content_genre", "Unknown")} · {best.get("content_language", "Unknown")}
-                        </p>
-                        <p>
-                            <b>Method:</b> {best.get("recommendation_type", "Hybrid recommendation")}<br>
-                            <b>Hybrid score:</b> {float(best.get("score", 0)):.3f}<br>
-                            <b>Confidence:</b> {float(best.get("confidence", 0)):.1%}
-                        </p>
-                        <p class="small-muted">
-                            {best.get("reason", "Recommended based on hybrid user-content affinity.")}
-                        </p>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
+                insight_card(
+                    str(best.get("title", "N/A")),
+                    f"Method: {best.get('recommendation_type', 'Hybrid recommendation')}. Score: {float(best.get('score', 0)):.3f}. Confidence: {float(best.get('confidence', 0)):.1%}. {best.get('reason', '')}",
+                    "Best next watch",
                 )
 
                 if "user_profile" in best:
                     st.markdown(
                         f"""
-                        <div class="glass-card">
-                            <h3 style="margin-top:0;">User Profile Summary</h3>
-                            <p class="small-muted">{best.get("user_profile", "")}</p>
+                        <div class="insight-card">
+                            <div class="mono-label">User profile</div>
+                            <p class="muted">{best.get("user_profile", "")}</p>
                         </div>
                         """,
                         unsafe_allow_html=True,
@@ -878,7 +1095,7 @@ elif page == "Recommendation Engine":
                 y="score",
                 color="signal",
                 barmode="group",
-                title="Recommendation Signal Breakdown for Selected User",
+                title="Hybrid Signal Breakdown",
             )
             fig.update_xaxes(tickangle=-25)
             fig = plotly_theme(fig, height=500)
@@ -890,7 +1107,7 @@ elif page == "Recommendation Engine":
             if "recommendation_type" in recs.columns:
                 method_counts = recs["recommendation_type"].value_counts().reset_index()
                 method_counts.columns = ["recommendation_type", "count"]
-                fig = px.pie(method_counts, names="recommendation_type", values="count", hole=0.55, title="Dominant Recommendation Method")
+                fig = px.pie(method_counts, names="recommendation_type", values="count", hole=0.55, title="Dominant Method")
                 fig = plotly_theme(fig, height=430)
                 st.plotly_chart(fig, use_container_width=True)
 
@@ -898,39 +1115,10 @@ elif page == "Recommendation Engine":
             if "title" in recs.columns:
                 popular_recs = recs["title"].value_counts().head(10).reset_index()
                 popular_recs.columns = ["title", "recommendation_count"]
-                fig = px.bar(popular_recs, x="recommendation_count", y="title", orientation="h", title="Most Frequently Recommended Titles")
+                fig = px.bar(popular_recs, x="recommendation_count", y="title", orientation="h", title="Most Recommended Titles")
+                fig.update_traces(marker_color="#FF3D00")
                 fig = plotly_theme(fig, height=430)
                 st.plotly_chart(fig, use_container_width=True)
-
-        quality_cols = [
-            "user_id",
-            "rec_rank",
-            "title",
-            "recommendation_type",
-            "score",
-            "confidence",
-            "model_cf_score",
-            "user_cf_score",
-            "item_cf_score",
-            "content_score",
-            "country_score",
-            "popularity_score",
-            "reason",
-        ]
-        existing_quality_cols = [col for col in quality_cols if col in recs.columns]
-        quality_df = recs[existing_quality_cols].copy()
-
-        for col in ["score", "confidence", "model_cf_score", "user_cf_score", "item_cf_score", "content_score", "country_score", "popularity_score"]:
-            if col in quality_df.columns:
-                quality_df[col] = quality_df[col].map(lambda x: f"{float(x):.3f}")
-
-        if "rec_rank" in quality_df.columns:
-            quality_df = quality_df.sort_values(["user_id", "rec_rank"])
-        else:
-            quality_df = quality_df.sort_values(["user_id"])
-
-        st.markdown('<div class="section-title">Recommendation Quality Table</div>', unsafe_allow_html=True)
-        st.dataframe(quality_df.head(100), use_container_width=True, hide_index=True)
 
 
 # ============================================================
@@ -938,90 +1126,57 @@ elif page == "Recommendation Engine":
 # ============================================================
 
 elif page == "GenAI Studio":
-    st.markdown('<div class="section-title">Gemini GenAI Studio</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="section-caption">A GenAI product layer for executive intelligence, retention campaigns, content metadata enrichment, and natural-language analytics.</div>',
-        unsafe_allow_html=True,
+    page_header(
+        "05 / GenAI Studio",
+        "WAREHOUSE DATA, MADE VERBAL.",
+        "Gemini converts structured metrics into executive briefs, retention campaigns, metadata enrichment, and safe analytics answers.",
+        ["Gemini API", "Executive brief", "Campaigns", "Metadata", "SQL copilot"],
     )
 
     g1, g2, g3, g4 = st.columns(4)
-    g1.metric("Executive Briefs", format_number(len(summaries)))
-    g2.metric("Retention Campaigns", format_number(len(retention_campaigns)))
-    g3.metric("Enriched Titles", format_number(len(content_enrichment)))
-    g4.metric("GenAI Provider", "Gemini API")
+    g1.metric("Briefs", format_number(len(summaries)))
+    g2.metric("Campaigns", format_number(len(retention_campaigns)))
+    g3.metric("Enriched", format_number(len(content_enrichment)))
+    g4.metric("Provider", "Gemini")
 
     genai_tab_1, genai_tab_2, genai_tab_3, genai_tab_4 = st.tabs(
-        [
-            "Executive Brief",
-            "Retention Campaigns",
-            "Content Enrichment",
-            "AI Analytics Copilot",
-        ]
+        ["Executive Brief", "Retention Campaigns", "Content Enrichment", "Analytics Copilot"]
     )
 
     with genai_tab_1:
-        st.markdown('<div class="section-title">Gemini Executive Intelligence Brief</div>', unsafe_allow_html=True)
-
         if summaries.empty:
-            empty_state(
-                "No executive summary found",
-                "Run: python -m src.genai_summary",
-            )
+            empty_state("No executive summary found", "Run: python -m src.genai_summary")
         else:
             latest = summaries.sort_values("generated_at").iloc[-1]
-
-            st.markdown(
-                f"""
-                <div class="genai-card">
-                    <h2 style="margin-top:0;">Daily OTT Intelligence Brief</h2>
-                    <p class="small-muted">Generated for: {latest.get("summary_date", "Latest Date")}</p>
-                    <div style="white-space: pre-wrap; line-height: 1.75; color: rgba(255,255,255,0.90);">
-                    {latest.get("summary_text", "")}
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
+            genai_card(
+                "Daily OTT Intelligence Brief",
+                latest.get("summary_text", ""),
+                f"Generated for {latest.get('summary_date', 'latest date')}",
             )
 
             st.markdown(
                 """
-                <div class="glass-card">
-                    <h3 style="margin-top:0;">What this demonstrates</h3>
-                    <p class="small-muted">
-                    This layer uses Gemini to convert warehouse metrics into a leadership-ready intelligence brief.
-                    It shows how GenAI can sit on top of a data warehouse and explain trends, risks, and recommended actions.
-                    </p>
+                <div class="pull-quote">
+                GenAI is not replacing analytics here. It is translating warehouse metrics into leadership language.
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
 
     with genai_tab_2:
-        st.markdown('<div class="section-title">Gemini Retention Campaign Generator</div>', unsafe_allow_html=True)
-
         if retention_campaigns.empty:
-            empty_state(
-                "No retention campaigns found",
-                "Run: python -m src.genai_retention_campaigns",
-            )
+            empty_state("No retention campaigns found", "Run: python -m src.genai_retention_campaigns")
         else:
             high_count = len(retention_campaigns[retention_campaigns["risk_level"].str.lower() == "high"]) if "risk_level" in retention_campaigns.columns else 0
             medium_count = len(retention_campaigns[retention_campaigns["risk_level"].str.lower() == "medium"]) if "risk_level" in retention_campaigns.columns else 0
 
             c1, c2, c3 = st.columns(3)
-            c1.metric("High-Risk Campaigns", format_number(high_count))
-            c2.metric("Medium-Risk Campaigns", format_number(medium_count))
+            c1.metric("High Risk", format_number(high_count))
+            c2.metric("Medium Risk", format_number(medium_count))
             c3.metric("Channels", "Push / WhatsApp")
 
-            if "risk_level" in retention_campaigns.columns:
-                campaign_counts = retention_campaigns["risk_level"].value_counts().reset_index()
-                campaign_counts.columns = ["risk_level", "campaigns"]
-                fig = px.pie(campaign_counts, names="risk_level", values="campaigns", hole=0.55, title="Campaigns by Risk Level")
-                fig = plotly_theme(fig, height=380)
-                st.plotly_chart(fig, use_container_width=True)
-
             selected_campaign_user = st.selectbox(
-                "Inspect generated campaign for user",
+                "Inspect generated campaign",
                 sorted(retention_campaigns["user_id"].unique()) if "user_id" in retention_campaigns.columns else [],
             )
 
@@ -1029,22 +1184,10 @@ elif page == "GenAI Studio":
 
             if not user_campaign.empty:
                 row = user_campaign.iloc[0]
-
-                st.markdown(
-                    f"""
-                    <div class="genai-card">
-                        <h3 style="margin-top:0;">Campaign for {row.get("user_id", "N/A")}</h3>
-                        <p>
-                            <b>Risk:</b> {row.get("risk_level", "N/A")}<br>
-                            <b>Reason:</b> {row.get("risk_reason", "N/A")}<br>
-                            <b>Recommended Title:</b> {row.get("recommended_title", "N/A")}<br>
-                            <b>Channel:</b> {row.get("campaign_channel", "N/A")}
-                        </p>
-                        <h4>Generated Message</h4>
-                        <p style="font-size:1.05rem; line-height:1.65;">{row.get("campaign_message", "")}</p>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
+                genai_card(
+                    f"Campaign for {row.get('user_id', 'N/A')}",
+                    row.get("campaign_message", ""),
+                    f"Risk: {row.get('risk_level', 'N/A')} / Title: {row.get('recommended_title', 'N/A')}",
                 )
 
             show_cols = [
@@ -1066,13 +1209,8 @@ elif page == "GenAI Studio":
             st.dataframe(display_campaigns, use_container_width=True, hide_index=True)
 
     with genai_tab_3:
-        st.markdown('<div class="section-title">Gemini Content Metadata Enrichment</div>', unsafe_allow_html=True)
-
         if content_enrichment.empty:
-            empty_state(
-                "No enriched metadata found",
-                "Run: python -m src.genai_content_enrichment",
-            )
+            empty_state("No enriched metadata found", "Run: python -m src.genai_content_enrichment")
         else:
             e1, e2, e3 = st.columns(3)
             e1.metric("Enriched Titles", format_number(len(content_enrichment)))
@@ -1088,20 +1226,27 @@ elif page == "GenAI Studio":
 
             if not title_row.empty:
                 row = title_row.iloc[0]
+                genai_card(
+                    row.get("title", "N/A"),
+                    f"""Short Summary:
+{row.get("short_summary", "")}
 
-                st.markdown(
-                    f"""
-                    <div class="genai-card">
-                        <h2 style="margin-top:0;">{row.get("title", "N/A")}</h2>
-                        <p><b>Short Summary:</b> {row.get("short_summary", "")}</p>
-                        <p><b>Mood Tags:</b> {row.get("mood_tags", "")}</p>
-                        <p><b>Theme Tags:</b> {row.get("theme_tags", "")}</p>
-                        <p><b>Search Keywords:</b> {row.get("search_keywords", "")}</p>
-                        <p><b>Audience Segment:</b> {row.get("audience_segment", "")}</p>
-                        <p><b>Recommendation Blurb:</b> {row.get("recommendation_blurb", "")}</p>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
+Mood Tags:
+{row.get("mood_tags", "")}
+
+Theme Tags:
+{row.get("theme_tags", "")}
+
+Search Keywords:
+{row.get("search_keywords", "")}
+
+Audience Segment:
+{row.get("audience_segment", "")}
+
+Recommendation Blurb:
+{row.get("recommendation_blurb", "")}
+""",
+                    "Gemini metadata enrichment",
                 )
 
             show_cols = [
@@ -1116,27 +1261,7 @@ elif page == "GenAI Studio":
             existing_cols = [c for c in show_cols if c in content_enrichment.columns]
             st.dataframe(content_enrichment[existing_cols], use_container_width=True, hide_index=True)
 
-            st.markdown(
-                """
-                <div class="glass-card">
-                    <h3 style="margin-top:0;">OTT Relevance</h3>
-                    <p class="small-muted">
-                    Streaming platforms rely heavily on metadata quality for search, personalization,
-                    content discovery, recommendation explanations, and regional content packaging.
-                    This module shows how GenAI can enrich weak catalog metadata automatically.
-                    </p>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
     with genai_tab_4:
-        st.markdown('<div class="section-title">AI Analytics Copilot</div>', unsafe_allow_html=True)
-        st.markdown(
-            '<div class="section-caption">Ask business questions in natural language. The copilot maps them to safe read-only SQL templates.</div>',
-            unsafe_allow_html=True,
-        )
-
         example_questions = [
             "Which users are at highest churn risk?",
             "Which content has the highest watch time?",
@@ -1152,12 +1277,12 @@ elif page == "GenAI Studio":
 
         generated_sql = classify_question_to_sql(custom_question)
 
-        st.markdown('<div class="section-title">Generated SQL</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-kicker">Generated SQL</div>', unsafe_allow_html=True)
         st.code(generated_sql.strip(), language="sql")
 
         if st.button("Run Copilot Query"):
             result = run_safe_query(generated_sql)
-            st.markdown('<div class="section-title">Copilot Answer Table</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-kicker">Copilot answer</div>', unsafe_allow_html=True)
 
             if "error" in result.columns:
                 st.error(result["error"].iloc[0])
@@ -1165,21 +1290,10 @@ elif page == "GenAI Studio":
                 st.dataframe(result, use_container_width=True, hide_index=True)
 
                 if not result.empty:
-                    st.markdown(
-                        f"""
-                        <div class="genai-card">
-                            <h3 style="margin-top:0;">Plain-English Answer</h3>
-                            <p>
-                            The copilot found <b>{len(result)}</b> matching records for your question.
-                            The table above is generated from the warehouse using a safe read-only SQL template.
-                            </p>
-                            <p class="small-muted">
-                            This demonstrates the architecture of a GenAI analytics assistant:
-                            natural-language question → SQL intent mapping → warehouse query → business-readable answer.
-                            </p>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
+                    insight_card(
+                        "Safe warehouse answer.",
+                        f"The copilot found {len(result)} matching records using a safe read-only SQL template. This demonstrates natural-language analytics without exposing arbitrary SQL execution.",
+                        "AI analytics copilot",
                     )
 
 
@@ -1188,11 +1302,16 @@ elif page == "GenAI Studio":
 # ============================================================
 
 elif page == "Playback Quality":
+    page_header(
+        "06 / Playback Quality",
+        "FRICTION KILLS RETENTION.",
+        "Buffering and device quality signals help explain experience-driven churn.",
+        ["Buffering", "Quality score", "Device friction", "Retention risk"],
+    )
+
     if device.empty:
         empty_state("No playback metrics yet", "Run the pipeline to create device_quality_metrics.")
     else:
-        st.markdown('<div class="section-title">Playback Quality Observatory</div>', unsafe_allow_html=True)
-
         total_buffering = device["total_buffering_events"].sum() if "total_buffering_events" in device.columns else 0
         avg_quality = device["avg_quality_score"].mean() if "avg_quality_score" in device.columns else 0
         worst_device = "N/A"
@@ -1201,9 +1320,9 @@ elif page == "Playback Quality":
             worst_device = device.sort_values("total_buffering_events", ascending=False).iloc[0]["device"]
 
         c1, c2, c3 = st.columns(3)
-        c1.metric("Total Buffering Events", format_number(total_buffering))
-        c2.metric("Avg Quality Score", f"{float(avg_quality):.2f}")
-        c3.metric("Most Problematic Device", worst_device)
+        c1.metric("Buffering", format_number(total_buffering))
+        c2.metric("Quality", f"{float(avg_quality):.2f}")
+        c3.metric("Worst Device", worst_device)
 
         left, right = st.columns(2)
 
@@ -1212,8 +1331,9 @@ elif page == "Playback Quality":
                 device.sort_values("total_buffering_events", ascending=False),
                 x="device",
                 y="total_buffering_events",
-                title="Buffering Events by Device",
+                title="Buffering Events By Device",
             )
+            fig.update_traces(marker_color="#FF3D00")
             fig = plotly_theme(fig, height=430)
             st.plotly_chart(fig, use_container_width=True)
 
@@ -1222,25 +1342,17 @@ elif page == "Playback Quality":
                 device.sort_values("avg_quality_score", ascending=True),
                 x="device",
                 y="avg_quality_score",
-                title="Average Quality Score by Device",
+                title="Average Quality Score By Device",
             )
             fig2 = plotly_theme(fig2, height=430)
             st.plotly_chart(fig2, use_container_width=True)
 
         st.dataframe(device.sort_values("total_buffering_events", ascending=False), use_container_width=True, hide_index=True)
 
-        st.markdown(
-            f"""
-            <div class="insight-card">
-                <h3 style="margin-top:0;">Retention Risk Connection</h3>
-                <p>
-                    Playback quality directly affects streaming retention. If <b>{worst_device}</b>
-                    consistently shows higher buffering, users on that device may show lower completion
-                    rates and higher churn risk.
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True,
+        insight_card(
+            "Playback quality is a churn signal.",
+            f"{worst_device} currently has the highest buffering load. In an OTT platform, device-level playback friction can lower completion rates and increase cancellation risk.",
+            "Experience risk",
         )
 
 
@@ -1249,13 +1361,18 @@ elif page == "Playback Quality":
 # ============================================================
 
 elif page == "Pipeline Health":
-    st.markdown('<div class="section-title">Data Pipeline Health</div>', unsafe_allow_html=True)
+    page_header(
+        "07 / Pipeline Health",
+        "THE DATA MACHINE.",
+        "A control-room view of Kafka ingestion, cleaned tables, event distribution, and the flow into ML and GenAI.",
+        ["Kafka", "Raw events", "Cleaned events", "Airflow", "Warehouse"],
+    )
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Raw Events", format_number(len(raw)))
-    c2.metric("Clean Watch Events", format_number(len(clean_watch)))
-    c3.metric("Clean Business Events", format_number(len(clean_business)))
-    c4.metric("Pipeline Tables", "13+")
+    c2.metric("Clean Watch", format_number(len(clean_watch)))
+    c3.metric("Clean Business", format_number(len(clean_business)))
+    c4.metric("Tables", "13+")
 
     if raw.empty:
         empty_state("No raw events found", "Start Kafka producer and consumer to load raw events into PostgreSQL.")
@@ -1268,22 +1385,22 @@ elif page == "Pipeline Health":
                 counts.columns = ["event_type", "count"]
                 fig = px.bar(counts, x="event_type", y="count", title="Raw Event Type Distribution")
                 fig.update_xaxes(tickangle=-35)
+                fig.update_traces(marker_color="#FF3D00")
                 fig = plotly_theme(fig, height=430)
                 st.plotly_chart(fig, use_container_width=True)
 
         with right:
             st.markdown(
                 """
-                <div class="glass-card">
-                    <h3 style="margin-top:0;">Pipeline Flow</h3>
-                    <p><b>1.</b> Python producer creates OTT events</p>
-                    <p><b>2.</b> Kafka-compatible Redpanda streams events</p>
-                    <p><b>3.</b> Consumer writes raw events to PostgreSQL</p>
-                    <p><b>4.</b> Airflow/Python pipeline cleans and transforms events</p>
-                    <p><b>5.</b> ML jobs generate churn intelligence</p>
-                    <p><b>6.</b> Recommendation engine generates personalized titles</p>
-                    <p><b>7.</b> Gemini layer generates executive briefs, campaigns, and metadata</p>
-                    <p><b>8.</b> Streamlit dashboard visualizes insights</p>
+                <div class="insight-card">
+                    <div class="mono-label">Pipeline flow</div>
+                    <p><b>01</b> Python producer creates OTT events</p>
+                    <p><b>02</b> Redpanda streams Kafka-compatible events</p>
+                    <p><b>03</b> Consumer writes raw events to PostgreSQL</p>
+                    <p><b>04</b> Airflow/Python pipeline transforms data</p>
+                    <p><b>05</b> ML jobs generate churn intelligence</p>
+                    <p><b>06</b> Recommender generates personalized titles</p>
+                    <p><b>07</b> Gemini converts metrics into business language</p>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -1300,46 +1417,44 @@ elif page == "Pipeline Health":
 # ============================================================
 
 elif page == "Executive Summary":
-    st.markdown('<div class="section-title">AI-Style Executive Summary</div>', unsafe_allow_html=True)
+    page_header(
+        "08 / Executive Summary",
+        "METRICS BECOME LANGUAGE.",
+        "A Gemini-generated narrative layer that turns warehouse signals into leadership-ready interpretation.",
+        ["Gemini", "Leadership brief", "Actions", "Risks"],
+    )
 
     if summaries.empty:
         empty_state("No executive summary yet", "Run: python -m src.genai_summary")
     else:
         latest = summaries.sort_values("generated_at").iloc[-1]
 
-        c1, c2 = st.columns([0.72, 0.28])
+        left, right = st.columns([0.72, 0.28])
 
-        with c1:
-            st.markdown(
-                f"""
-                <div class="insight-card">
-                    <h2 style="margin-top:0;">Summary for {latest.get("summary_date", "Latest Date")}</h2>
-                    <div style="white-space: pre-wrap; line-height: 1.75; color: rgba(255,255,255,0.88);">
-                    {latest.get("summary_text", "")}
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
+        with left:
+            genai_card(
+                f"Summary for {latest.get('summary_date', 'latest date')}",
+                latest.get("summary_text", ""),
+                "Generated executive brief",
             )
 
-        with c2:
-            st.markdown(
-                """
-                <div class="glass-card">
-                    <h3 style="margin-top:0;">Why this matters</h3>
-                    <p class="small-muted">
-                    Executives do not always want to inspect dashboards manually.
-                    This layer converts metrics into readable business insights:
-                    what changed, why it matters, and what action should be taken.
-                    </p>
-                </div>
-                """,
-                unsafe_allow_html=True,
+        with right:
+            insight_card(
+                "Why this matters.",
+                "Executives do not always want dashboards. This layer turns warehouse metrics into plain-English insight, risk interpretation, and action recommendations.",
+                "GenAI layer",
             )
 
         if not daily.empty:
             daily_sorted = daily.sort_values("metric_date")
-            fig = px.line(daily_sorted, x="metric_date", y="total_watch_minutes", markers=True, title="Metric Context Used by Summary")
+            fig = px.line(
+                daily_sorted,
+                x="metric_date",
+                y="total_watch_minutes",
+                markers=True,
+                title="Metric Context Used By Summary",
+            )
+            fig.update_traces(line_color="#FF3D00", marker_color="#FAFAFA")
             fig = plotly_theme(fig, height=390)
             st.plotly_chart(fig, use_container_width=True)
 
@@ -1351,7 +1466,7 @@ elif page == "Executive Summary":
 st.markdown(
     """
     <div class="footer-note">
-        StreamFlix DE · STARZPLAY-inspired project · Kafka-compatible event streaming · Airflow orchestration · ML intelligence · Hybrid recommendation engine · Gemini GenAI Studio · OTT analytics dashboard
+        StreamFlix DE · Kafka-compatible event streaming · Airflow orchestration · ML intelligence · Hybrid recommendation engine · Gemini GenAI Studio · OTT analytics dashboard
     </div>
     """,
     unsafe_allow_html=True,
