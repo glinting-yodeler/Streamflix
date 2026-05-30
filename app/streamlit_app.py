@@ -227,12 +227,6 @@ def load_table(table):
         return pd.DataFrame()
 
 
-def safe_col(df, col, default=0):
-    if df.empty or col not in df.columns:
-        return default
-    return df[col]
-
-
 def format_number(value):
     try:
         value = float(value)
@@ -297,7 +291,7 @@ def plotly_theme(fig, height=420):
 
 
 # ============================================================
-# LOAD TABLES ONCE
+# LOAD TABLES
 # ============================================================
 
 daily = load_table("daily_metrics")
@@ -305,6 +299,8 @@ country = load_table("country_metrics")
 content = load_table("content_performance")
 device = load_table("device_quality_metrics")
 churn = load_table("churn_predictions")
+churn_metrics = load_table("churn_model_metrics")
+churn_importance = load_table("churn_feature_importance")
 recs = load_table("recommendations")
 summaries = load_table("executive_summaries")
 raw = load_table("raw_events")
@@ -583,31 +579,90 @@ elif page == "Churn Intelligence":
     else:
         st.markdown('<div class="section-title">Churn Intelligence Center</div>', unsafe_allow_html=True)
         st.markdown(
-            '<div class="section-caption">Identify users likely to cancel and connect risk to product actions.</div>',
+            '<div class="section-caption">Industry-style churn pipeline with model comparison, risk explanations, feature importance, and retention actions.</div>',
             unsafe_allow_html=True
         )
 
-        churn_display = churn.copy()
-        if "risk_level" in churn_display.columns:
-            churn_display["risk_display"] = churn_display["risk_level"].apply(risk_color_label)
-
-        high_risk = len(churn_display[churn_display["risk_level"].str.lower() == "high"]) if "risk_level" in churn_display.columns else 0
-        medium_risk = len(churn_display[churn_display["risk_level"].str.lower() == "medium"]) if "risk_level" in churn_display.columns else 0
-        avg_churn_prob = churn_display["churn_probability"].mean() if "churn_probability" in churn_display.columns else 0
-        max_churn_prob = churn_display["churn_probability"].max() if "churn_probability" in churn_display.columns else 0
+        high_risk = len(churn[churn["risk_level"].str.lower() == "high"]) if "risk_level" in churn.columns else 0
+        medium_risk = len(churn[churn["risk_level"].str.lower() == "medium"]) if "risk_level" in churn.columns else 0
+        low_risk = len(churn[churn["risk_level"].str.lower() == "low"]) if "risk_level" in churn.columns else 0
+        avg_churn_prob = churn["churn_probability"].mean() if "churn_probability" in churn.columns else 0
 
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("High-Risk Users", format_number(high_risk))
         c2.metric("Medium-Risk Users", format_number(medium_risk))
-        c3.metric("Avg Churn Risk", f"{float(avg_churn_prob):.1%}")
-        c4.metric("Max Churn Risk", f"{float(max_churn_prob):.1%}")
+        c3.metric("Low-Risk Users", format_number(low_risk))
+        c4.metric("Avg Churn Risk", f"{float(avg_churn_prob):.1%}")
 
-        left, right = st.columns([0.95, 1.05])
+        if not churn_metrics.empty:
+            selected = churn_metrics[churn_metrics["selected_model"] == True]
+            if selected.empty:
+                selected = churn_metrics.sort_values("auc", ascending=False).head(1)
+
+            best = selected.iloc[0]
+
+            st.markdown('<div class="section-title">Selected Model Performance</div>', unsafe_allow_html=True)
+
+            m1, m2, m3, m4, m5 = st.columns(5)
+            m1.metric("Best Model", str(best.get("model_name", "N/A")).replace("_", " ").title())
+            m2.metric("Accuracy", f"{float(best.get('accuracy', 0)):.1%}")
+            m3.metric("Precision", f"{float(best.get('precision_score', 0)):.1%}")
+            m4.metric("Recall", f"{float(best.get('recall', 0)):.1%}")
+            m5.metric("AUC", f"{float(best.get('auc', 0)):.3f}")
+
+            left, right = st.columns([1.15, 0.85])
+
+            with left:
+                st.markdown('<div class="section-title">Candidate Model Comparison</div>', unsafe_allow_html=True)
+                metric_cols = [
+                    "model_name", "accuracy", "precision_score",
+                    "recall", "f1", "auc", "selected_model"
+                ]
+                existing_cols = [c for c in metric_cols if c in churn_metrics.columns]
+
+                model_table = churn_metrics[existing_cols].copy()
+                for col in ["accuracy", "precision_score", "recall", "f1"]:
+                    if col in model_table.columns:
+                        model_table[col] = model_table[col].map(lambda x: f"{float(x):.1%}")
+                if "auc" in model_table.columns:
+                    model_table["auc"] = model_table["auc"].map(lambda x: f"{float(x):.3f}")
+
+                st.dataframe(
+                    model_table,
+                    use_container_width=True,
+                    hide_index=True
+                )
+
+            with right:
+                st.markdown('<div class="section-title">Confusion Matrix</div>', unsafe_allow_html=True)
+
+                tn = int(best.get("true_negatives", 0))
+                fp = int(best.get("false_positives", 0))
+                fn = int(best.get("false_negatives", 0))
+                tp = int(best.get("true_positives", 0))
+
+                cm_df = pd.DataFrame(
+                    [[tn, fp], [fn, tp]],
+                    index=["Actual: Not Churn", "Actual: Churn"],
+                    columns=["Pred: Not Churn", "Pred: Churn"]
+                )
+
+                fig_cm = px.imshow(
+                    cm_df,
+                    text_auto=True,
+                    aspect="auto",
+                    title="Confusion Matrix"
+                )
+                fig_cm = plotly_theme(fig_cm, height=330)
+                st.plotly_chart(fig_cm, use_container_width=True)
+
+        left, right = st.columns([0.9, 1.1])
 
         with left:
             if "risk_level" in churn.columns:
                 risk_counts = churn["risk_level"].value_counts().reset_index()
                 risk_counts.columns = ["risk_level", "users"]
+
                 fig = px.pie(
                     risk_counts,
                     names="risk_level",
@@ -615,11 +670,12 @@ elif page == "Churn Intelligence":
                     hole=0.58,
                     title="Risk Distribution"
                 )
-                fig = plotly_theme(fig, height=430)
+                fig = plotly_theme(fig, height=420)
                 st.plotly_chart(fig, use_container_width=True)
 
         with right:
             top_risk = churn.sort_values("churn_probability", ascending=False).head(12)
+
             fig = px.bar(
                 top_risk,
                 x="user_id",
@@ -628,31 +684,71 @@ elif page == "Churn Intelligence":
                 title="Highest-Risk Users"
             )
             fig.update_yaxes(tickformat=".0%")
-            fig = plotly_theme(fig, height=430)
+            fig = plotly_theme(fig, height=420)
+            st.plotly_chart(fig, use_container_width=True)
+
+        if not churn_importance.empty:
+            st.markdown('<div class="section-title">Feature Importance</div>', unsafe_allow_html=True)
+            st.markdown(
+                '<div class="section-caption">Shows which behavioral, payment, subscription, and playback-quality signals influence churn prediction.</div>',
+                unsafe_allow_html=True
+            )
+
+            imp = churn_importance.sort_values("importance", ascending=False).head(15)
+            fig = px.bar(
+                imp.sort_values("importance"),
+                x="importance",
+                y="feature_name",
+                orientation="h",
+                title="Top Churn Drivers"
+            )
+            fig = plotly_theme(fig, height=500)
             st.plotly_chart(fig, use_container_width=True)
 
         st.markdown('<div class="section-title">Retention Action Queue</div>', unsafe_allow_html=True)
 
-        top_users = churn.sort_values("churn_probability", ascending=False).head(25).copy()
-        if "churn_probability" in top_users.columns:
-            top_users["churn_probability"] = top_users["churn_probability"].map(lambda x: f"{x:.1%}")
-        if "risk_level" in top_users.columns:
-            top_users["recommended_action"] = top_users["risk_level"].apply(
-                lambda x: "Offer discount + personalized content" if str(x).lower() == "high"
-                else "Send content recommendation" if str(x).lower() == "medium"
-                else "No immediate action"
-            )
+        top_users = churn.sort_values("churn_probability", ascending=False).head(40).copy()
 
-        st.dataframe(top_users, use_container_width=True, hide_index=True)
+        if "churn_probability" in top_users.columns:
+            top_users["churn_probability"] = top_users["churn_probability"].map(lambda x: f"{float(x):.1%}")
+
+        preferred_cols = [
+            "user_id",
+            "churn_probability",
+            "risk_level",
+            "risk_reason",
+            "recommended_action",
+            "country",
+            "subscription_plan",
+            "days_since_last_watch",
+            "total_watch_minutes",
+            "avg_completion_rate",
+            "buffering_count",
+            "payment_failed_count",
+            "engagement_score",
+            "friction_score",
+        ]
+
+        existing_cols = [c for c in preferred_cols if c in top_users.columns]
+
+        st.dataframe(
+            top_users[existing_cols],
+            use_container_width=True,
+            hide_index=True
+        )
 
         st.markdown(
             """
             <div class="insight-card">
-                <h3 style="margin-top:0;">How to explain this in interview</h3>
+                <h3 style="margin-top:0;">Interview Explanation</h3>
                 <p>
-                    The churn layer converts raw behavioral events into user-level risk scores.
-                    Instead of just showing analytics, the system produces an operational action queue:
-                    who is at risk, how serious the risk is, and what retention action can be taken.
+                    This churn system does not only output a probability. It compares multiple models,
+                    selects the strongest one, stores model metrics, explains the main risk reasons,
+                    and converts predictions into retention actions.
+                </p>
+                <p class="small-muted">
+                    In a real OTT business, this could power lifecycle campaigns, payment recovery flows,
+                    personalized content recommendations, and playback-quality interventions.
                 </p>
             </div>
             """,
@@ -824,7 +920,7 @@ elif page == "Pipeline Health":
     c1.metric("Raw Events", format_number(len(raw)))
     c2.metric("Clean Watch Events", format_number(len(clean_watch)))
     c3.metric("Clean Business Events", format_number(len(clean_business)))
-    c4.metric("Pipeline Tables", "7+")
+    c4.metric("Pipeline Tables", "9+")
 
     if raw.empty:
         empty_state(
