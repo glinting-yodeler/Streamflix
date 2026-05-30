@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+.env
+models/*.pkl
+data/
+*.log
+.airflow/
+.DS_Store
+.idea/
+.vscode/

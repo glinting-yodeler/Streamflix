@@ -1,0 +1,13 @@
+StreamFlix DE Architecture
+
+1. Producer generates synthetic OTT events.
+2. Redpanda acts as Kafka-compatible streaming broker.
+3. Consumer reads topic streamflix_events and writes raw_events to PostgreSQL.
+4. Airflow DAG runs scheduled data tasks:
+   - seed_dimensions
+   - clean_events
+   - build_marts
+   - train_churn_model
+   - generate_recommendations
+   - generate_executive_summary
+5. Streamlit reads PostgreSQL analytics tables and displays dashboards.
