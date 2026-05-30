@@ -1,11 +1,14 @@
 import sys
 from pathlib import Path
+
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+from sqlalchemy import text
+
 from src.db import get_engine
 
 
@@ -17,7 +20,7 @@ st.set_page_config(
     page_title="StreamFlix DE | OTT Intelligence",
     page_icon="🎬",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
 
@@ -147,6 +150,17 @@ st.markdown(
             margin-bottom: 18px;
         }
 
+        .genai-card {
+            background:
+                linear-gradient(135deg, rgba(88, 166, 255, 0.12), rgba(168, 85, 247, 0.10)),
+                rgba(255,255,255,0.055);
+            border: 1px solid rgba(168, 85, 247, 0.24);
+            border-radius: 24px;
+            padding: 22px;
+            box-shadow: 0 16px 55px rgba(0,0,0,0.28);
+            margin-bottom: 18px;
+        }
+
         .success-chip {
             display: inline-block;
             padding: 6px 10px;
@@ -210,12 +224,12 @@ st.markdown(
         }
     </style>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
 
 # ============================================================
-# DATA LOADING
+# HELPERS
 # ============================================================
 
 @st.cache_data(ttl=30)
@@ -225,6 +239,16 @@ def load_table(table):
         return pd.read_sql(f"SELECT * FROM {table}", engine)
     except Exception:
         return pd.DataFrame()
+
+
+@st.cache_data(ttl=30)
+def run_safe_query(query):
+    engine = get_engine()
+    try:
+        with engine.begin() as conn:
+            return pd.read_sql(text(query), conn)
+    except Exception as exc:
+        return pd.DataFrame({"error": [str(exc)]})
 
 
 def format_number(value):
@@ -254,7 +278,7 @@ def empty_state(title, message):
             <p class="small-muted" style="margin:0;">{message}</p>
         </div>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
 
@@ -265,20 +289,86 @@ def plotly_theme(fig, height=420):
         plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color="#f4f4f5", family="Inter"),
         margin=dict(l=20, r=20, t=50, b=20),
-        legend=dict(
-            bgcolor="rgba(255,255,255,0)",
-            font=dict(color="#f4f4f5")
-        ),
-        xaxis=dict(
-            gridcolor="rgba(255,255,255,0.06)",
-            zerolinecolor="rgba(255,255,255,0.08)"
-        ),
-        yaxis=dict(
-            gridcolor="rgba(255,255,255,0.06)",
-            zerolinecolor="rgba(255,255,255,0.08)"
-        )
+        legend=dict(bgcolor="rgba(255,255,255,0)", font=dict(color="#f4f4f5")),
+        xaxis=dict(gridcolor="rgba(255,255,255,0.06)", zerolinecolor="rgba(255,255,255,0.08)"),
+        yaxis=dict(gridcolor="rgba(255,255,255,0.06)", zerolinecolor="rgba(255,255,255,0.08)"),
     )
     return fig
+
+
+def classify_question_to_sql(question):
+    q = question.lower().strip()
+
+    if "highest churn" in q or "high risk" in q or "churn risk" in q:
+        return """
+        SELECT user_id, churn_probability, risk_level, risk_reason, recommended_action, country
+        FROM churn_predictions
+        ORDER BY churn_probability DESC
+        LIMIT 10;
+        """
+
+    if "top content" in q or "highest watch" in q or "most watched" in q:
+        return """
+        SELECT title, genre, language, total_watch_minutes, unique_viewers, avg_completion_rate, popularity_score
+        FROM content_performance
+        ORDER BY total_watch_minutes DESC
+        LIMIT 10;
+        """
+
+    if "completion" in q and "content" in q:
+        return """
+        SELECT title, genre, language, avg_completion_rate, total_watch_minutes, unique_viewers
+        FROM content_performance
+        ORDER BY avg_completion_rate DESC
+        LIMIT 10;
+        """
+
+    if "country" in q or "countries" in q or "region" in q:
+        return """
+        SELECT country, total_watch_minutes, active_users, avg_completion_rate, total_revenue
+        FROM country_metrics
+        ORDER BY total_watch_minutes DESC
+        LIMIT 10;
+        """
+
+    if "device" in q or "buffer" in q or "playback" in q or "quality" in q:
+        return """
+        SELECT device, total_buffering_events, avg_quality_score, affected_users
+        FROM device_quality_metrics
+        ORDER BY total_buffering_events DESC
+        LIMIT 10;
+        """
+
+    if "recommend" in q or "recommendation" in q:
+        return """
+        SELECT user_id, rec_rank, title, recommendation_type, score, confidence, reason
+        FROM recommendations
+        ORDER BY user_id, rec_rank
+        LIMIT 20;
+        """
+
+    if "revenue" in q or "payment" in q or "failures" in q:
+        return """
+        SELECT metric_date, active_users, total_watch_minutes, total_revenue, payment_failures
+        FROM daily_metrics
+        ORDER BY metric_date DESC
+        LIMIT 10;
+        """
+
+    if "raw" in q or "events" in q or "event type" in q:
+        return """
+        SELECT event_type, COUNT(*) AS event_count
+        FROM raw_events
+        GROUP BY event_type
+        ORDER BY event_count DESC;
+        """
+
+    return """
+    SELECT metric_date, active_users, total_watch_minutes, avg_completion_rate, total_revenue, payment_failures
+    FROM daily_metrics
+    ORDER BY metric_date DESC
+    LIMIT 10;
+    """
 
 
 # ============================================================
@@ -298,6 +388,9 @@ recs = load_table("recommendations")
 recommendation_metrics = load_table("recommendation_model_metrics")
 
 summaries = load_table("executive_summaries")
+retention_campaigns = load_table("genai_retention_campaigns")
+content_enrichment = load_table("genai_content_enrichment")
+
 raw = load_table("raw_events")
 clean_watch = load_table("clean_watch_events")
 clean_business = load_table("clean_business_events")
@@ -312,10 +405,10 @@ with st.sidebar:
     st.markdown(
         """
         <p class="small-muted">
-        STARZPLAY-inspired streaming data engineering project.
+        STARZPLAY-inspired streaming data engineering, ML, and GenAI project.
         </p>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
     page = st.radio(
@@ -325,11 +418,12 @@ with st.sidebar:
             "Content Performance",
             "Churn Intelligence",
             "Recommendation Engine",
+            "GenAI Studio",
             "Playback Quality",
             "Pipeline Health",
-            "Executive Summary"
+            "Executive Summary",
         ],
-        label_visibility="collapsed"
+        label_visibility="collapsed",
     )
 
     st.markdown("---")
@@ -341,10 +435,11 @@ with st.sidebar:
             <span class="pill">PostgreSQL</span>
             <span class="pill">Airflow</span>
             <span class="pill">Scikit-learn</span>
+            <span class="pill">Gemini API</span>
             <span class="pill">Streamlit</span>
         </div>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
     st.markdown("---")
@@ -368,18 +463,18 @@ st.markdown(
             A STARZPLAY-inspired data engineering project that streams watch, search, payment,
             subscription, and playback-quality events through Kafka-compatible Redpanda,
             transforms them using Airflow pipelines, and powers business analytics,
-            churn intelligence, recommendations, and executive insights.
+            churn intelligence, hybrid recommendations, and Gemini-powered GenAI insights.
         </div>
         <div class="pill-row">
             <span class="pill">Real-time event ingestion</span>
             <span class="pill">Batch analytics pipeline</span>
             <span class="pill">Churn prediction</span>
             <span class="pill">Hybrid recommendation engine</span>
-            <span class="pill">Executive insight layer</span>
+            <span class="pill">Gemini GenAI Studio</span>
         </div>
     </div>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
 
@@ -389,10 +484,7 @@ st.markdown(
 
 if page == "Executive Overview":
     if daily.empty:
-        empty_state(
-            "No metrics yet",
-            "Run the producer and consumer for a few minutes, then run the Airflow pipeline or src.run_pipeline."
-        )
+        empty_state("No metrics yet", "Run producer + consumer, then run src.run_pipeline.")
     else:
         daily_sorted = daily.sort_values("metric_date")
         latest = daily_sorted.iloc[-1]
@@ -411,11 +503,6 @@ if page == "Executive Overview":
         c5.metric("Payment Failures", format_number(payment_failures))
 
         st.markdown('<div class="section-title">Platform Activity Trend</div>', unsafe_allow_html=True)
-        st.markdown(
-            '<div class="section-caption">Daily engagement trend from processed watch and business events.</div>',
-            unsafe_allow_html=True
-        )
-
         fig = go.Figure()
         fig.add_trace(
             go.Scatter(
@@ -424,7 +511,7 @@ if page == "Executive Overview":
                 mode="lines+markers",
                 name="Watch Minutes",
                 line=dict(width=4),
-                marker=dict(size=8)
+                marker=dict(size=8),
             )
         )
         fig = plotly_theme(fig, height=420)
@@ -437,20 +524,11 @@ if page == "Executive Overview":
             st.markdown('<div class="section-title">Country Performance</div>', unsafe_allow_html=True)
             if not country.empty and "country" in country.columns:
                 country_sorted = country.sort_values("total_watch_minutes", ascending=False)
-                fig = px.bar(
-                    country_sorted,
-                    x="country",
-                    y="total_watch_minutes",
-                    text_auto=True,
-                    title="Watch Time by Country"
-                )
+                fig = px.bar(country_sorted, x="country", y="total_watch_minutes", text_auto=True, title="Watch Time by Country")
                 fig = plotly_theme(fig)
                 st.plotly_chart(fig, use_container_width=True)
-            else:
-                empty_state("Country metrics unavailable", "The country_metrics table is empty.")
 
         with right:
-            st.markdown('<div class="section-title">Business Interpretation</div>', unsafe_allow_html=True)
             best_country = "N/A"
             if not country.empty and "country" in country.columns:
                 best_country = country.sort_values("total_watch_minutes", ascending=False).iloc[0]["country"]
@@ -461,19 +539,19 @@ if page == "Executive Overview":
                     <h3 style="margin-top:0;">Executive Readout</h3>
                     <p>
                         The platform currently shows <b>{format_number(active_users)}</b> active users and
-                        <b>{float(total_watch_minutes) / 60:,.1f}</b> total watch hours in the latest metrics window.
+                        <b>{float(total_watch_minutes) / 60:,.1f}</b> total watch hours.
                     </p>
                     <p>
                         The strongest country by watch-time contribution is <b>{best_country}</b>.
-                        Average completion is <b>{float(avg_completion):.1%}</b>, which is a useful indicator of content engagement.
+                        Average completion is <b>{float(avg_completion):.1%}</b>.
                     </p>
                     <p class="small-muted">
-                        Product lens: a streaming business would use these signals to understand regional demand,
-                        retention quality, content performance, and potential growth opportunities.
+                        A streaming business can use these signals to understand regional demand,
+                        content-market fit, and retention quality.
                     </p>
                 </div>
                 """,
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
 
 
@@ -483,12 +561,12 @@ if page == "Executive Overview":
 
 elif page == "Content Performance":
     if content.empty:
-        empty_state("No content metrics yet", "Run the analytics pipeline to build the content_performance table.")
+        empty_state("No content metrics yet", "Run the analytics pipeline to build content_performance.")
     else:
         st.markdown('<div class="section-title">Content Command Center</div>', unsafe_allow_html=True)
         st.markdown(
             '<div class="section-caption">Analyze what users watch, complete, and return to across genres and languages.</div>',
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
         top_content = content.sort_values("popularity_score", ascending=False).head(1).iloc[0]
@@ -512,7 +590,7 @@ elif page == "Content Performance":
                 x="title",
                 y="total_watch_minutes",
                 color="genre" if "genre" in chart_data.columns else None,
-                title="Top Content by Watch Time"
+                title="Top Content by Watch Time",
             )
             fig.update_xaxes(tickangle=-35)
             fig = plotly_theme(fig, height=460)
@@ -532,10 +610,8 @@ elif page == "Content Performance":
                     </p>
                 </div>
                 """,
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
-
-        st.markdown('<div class="section-title">Engagement Quality Map</div>', unsafe_allow_html=True)
 
         fig2 = px.scatter(
             content,
@@ -544,24 +620,25 @@ elif page == "Content Performance":
             size="unique_viewers" if "unique_viewers" in content.columns else None,
             color="language" if "language" in content.columns else None,
             hover_name="title" if "title" in content.columns else None,
-            title="Completion Rate vs Watch Time"
+            title="Completion Rate vs Watch Time",
         )
         fig2 = plotly_theme(fig2, height=470)
         st.plotly_chart(fig2, use_container_width=True)
 
-        st.markdown('<div class="section-title">Content Table</div>', unsafe_allow_html=True)
         show_cols = [
-            col for col in [
-                "title", "genre", "language", "total_watch_minutes",
-                "unique_viewers", "avg_completion_rate", "popularity_score"
+            col
+            for col in [
+                "title",
+                "genre",
+                "language",
+                "total_watch_minutes",
+                "unique_viewers",
+                "avg_completion_rate",
+                "popularity_score",
             ]
             if col in content.columns
         ]
-        st.dataframe(
-            content.sort_values("popularity_score", ascending=False)[show_cols].head(30),
-            use_container_width=True,
-            hide_index=True
-        )
+        st.dataframe(content.sort_values("popularity_score", ascending=False)[show_cols].head(30), use_container_width=True, hide_index=True)
 
 
 # ============================================================
@@ -573,10 +650,6 @@ elif page == "Churn Intelligence":
         empty_state("No churn predictions yet", "Run the ML pipeline to generate churn_predictions.")
     else:
         st.markdown('<div class="section-title">Churn Intelligence Center</div>', unsafe_allow_html=True)
-        st.markdown(
-            '<div class="section-caption">Industry-style churn pipeline with model comparison, risk explanations, feature importance, and retention actions.</div>',
-            unsafe_allow_html=True
-        )
 
         high_risk = len(churn[churn["risk_level"].str.lower() == "high"]) if "risk_level" in churn.columns else 0
         medium_risk = len(churn[churn["risk_level"].str.lower() == "medium"]) if "risk_level" in churn.columns else 0
@@ -596,8 +669,6 @@ elif page == "Churn Intelligence":
 
             best = selected.iloc[0]
 
-            st.markdown('<div class="section-title">Selected Model Performance</div>', unsafe_allow_html=True)
-
             m1, m2, m3, m4, m5 = st.columns(5)
             m1.metric("Best Model", str(best.get("model_name", "N/A")).replace("_", " ").title())
             m2.metric("Accuracy", f"{float(best.get('accuracy', 0)):.1%}")
@@ -608,25 +679,18 @@ elif page == "Churn Intelligence":
             left, right = st.columns([1.15, 0.85])
 
             with left:
-                st.markdown('<div class="section-title">Candidate Model Comparison</div>', unsafe_allow_html=True)
-                metric_cols = [
-                    "model_name", "accuracy", "precision_score",
-                    "recall", "f1", "auc", "selected_model"
-                ]
+                metric_cols = ["model_name", "accuracy", "precision_score", "recall", "f1", "auc", "selected_model"]
                 existing_cols = [c for c in metric_cols if c in churn_metrics.columns]
-
                 model_table = churn_metrics[existing_cols].copy()
+
                 for col in ["accuracy", "precision_score", "recall", "f1"]:
                     if col in model_table.columns:
                         model_table[col] = model_table[col].map(lambda x: f"{float(x):.1%}")
                 if "auc" in model_table.columns:
                     model_table["auc"] = model_table["auc"].map(lambda x: f"{float(x):.3f}")
 
-                st.dataframe(
-                    model_table,
-                    use_container_width=True,
-                    hide_index=True
-                )
+                st.markdown('<div class="section-title">Candidate Model Comparison</div>', unsafe_allow_html=True)
+                st.dataframe(model_table, use_container_width=True, hide_index=True)
 
             with right:
                 st.markdown('<div class="section-title">Confusion Matrix</div>', unsafe_allow_html=True)
@@ -639,15 +703,10 @@ elif page == "Churn Intelligence":
                 cm_df = pd.DataFrame(
                     [[tn, fp], [fn, tp]],
                     index=["Actual: Not Churn", "Actual: Churn"],
-                    columns=["Pred: Not Churn", "Pred: Churn"]
+                    columns=["Pred: Not Churn", "Pred: Churn"],
                 )
 
-                fig_cm = px.imshow(
-                    cm_df,
-                    text_auto=True,
-                    aspect="auto",
-                    title="Confusion Matrix"
-                )
+                fig_cm = px.imshow(cm_df, text_auto=True, aspect="auto", title="Confusion Matrix")
                 fig_cm = plotly_theme(fig_cm, height=330)
                 st.plotly_chart(fig_cm, use_container_width=True)
 
@@ -657,53 +716,32 @@ elif page == "Churn Intelligence":
             if "risk_level" in churn.columns:
                 risk_counts = churn["risk_level"].value_counts().reset_index()
                 risk_counts.columns = ["risk_level", "users"]
-
-                fig = px.pie(
-                    risk_counts,
-                    names="risk_level",
-                    values="users",
-                    hole=0.58,
-                    title="Risk Distribution"
-                )
+                fig = px.pie(risk_counts, names="risk_level", values="users", hole=0.58, title="Risk Distribution")
                 fig = plotly_theme(fig, height=420)
                 st.plotly_chart(fig, use_container_width=True)
 
         with right:
             top_risk = churn.sort_values("churn_probability", ascending=False).head(12)
-
             fig = px.bar(
                 top_risk,
                 x="user_id",
                 y="churn_probability",
                 color="risk_level" if "risk_level" in top_risk.columns else None,
-                title="Highest-Risk Users"
+                title="Highest-Risk Users",
             )
             fig.update_yaxes(tickformat=".0%")
             fig = plotly_theme(fig, height=420)
             st.plotly_chart(fig, use_container_width=True)
 
         if not churn_importance.empty:
-            st.markdown('<div class="section-title">Feature Importance</div>', unsafe_allow_html=True)
-            st.markdown(
-                '<div class="section-caption">Shows which behavioral, payment, subscription, and playback-quality signals influence churn prediction.</div>',
-                unsafe_allow_html=True
-            )
-
             imp = churn_importance.sort_values("importance", ascending=False).head(15)
-            fig = px.bar(
-                imp.sort_values("importance"),
-                x="importance",
-                y="feature_name",
-                orientation="h",
-                title="Top Churn Drivers"
-            )
+            fig = px.bar(imp.sort_values("importance"), x="importance", y="feature_name", orientation="h", title="Top Churn Drivers")
             fig = plotly_theme(fig, height=500)
             st.plotly_chart(fig, use_container_width=True)
 
         st.markdown('<div class="section-title">Retention Action Queue</div>', unsafe_allow_html=True)
 
         top_users = churn.sort_values("churn_probability", ascending=False).head(40).copy()
-
         if "churn_probability" in top_users.columns:
             top_users["churn_probability"] = top_users["churn_probability"].map(lambda x: f"{float(x):.1%}")
 
@@ -723,32 +761,8 @@ elif page == "Churn Intelligence":
             "engagement_score",
             "friction_score",
         ]
-
         existing_cols = [c for c in preferred_cols if c in top_users.columns]
-
-        st.dataframe(
-            top_users[existing_cols],
-            use_container_width=True,
-            hide_index=True
-        )
-
-        st.markdown(
-            """
-            <div class="insight-card">
-                <h3 style="margin-top:0;">Interview Explanation</h3>
-                <p>
-                    This churn system does not only output a probability. It compares multiple models,
-                    selects the strongest one, stores model metrics, explains the main risk reasons,
-                    and converts predictions into retention actions.
-                </p>
-                <p class="small-muted">
-                    In a real OTT business, this could power lifecycle campaigns, payment recovery flows,
-                    personalized content recommendations, and playback-quality interventions.
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        st.dataframe(top_users[existing_cols], use_container_width=True, hide_index=True)
 
 
 # ============================================================
@@ -761,8 +775,8 @@ elif page == "Recommendation Engine":
     else:
         st.markdown('<div class="section-title">Hybrid Recommendation Intelligence</div>', unsafe_allow_html=True)
         st.markdown(
-            '<div class="section-caption">Personalized OTT recommendations using user-based CF, item-based CF, model-based matrix factorization, content similarity, country trends, and popularity signals.</div>',
-            unsafe_allow_html=True
+            '<div class="section-caption">Uses user-based CF, item-based CF, model-based matrix factorization, content similarity, country trends, and popularity signals.</div>',
+            unsafe_allow_html=True,
         )
 
         total_recs = len(recs)
@@ -781,16 +795,11 @@ elif page == "Recommendation Engine":
 
         if not recommendation_metrics.empty:
             latest_metrics = recommendation_metrics.sort_values("generated_at").iloc[-1]
-
-            st.markdown('<div class="section-title">Recommendation System Status</div>', unsafe_allow_html=True)
-
             s1, s2, s3, s4 = st.columns(4)
             s1.metric("Model-Based CF", "Enabled" if latest_metrics.get("model_based_enabled", False) else "Off")
             s2.metric("User-Based CF", "Enabled" if latest_metrics.get("user_cf_enabled", False) else "Off")
             s3.metric("Item-Based CF", "Enabled" if latest_metrics.get("item_cf_enabled", False) else "Off")
             s4.metric("Content-Based", "Enabled" if latest_metrics.get("content_based_enabled", False) else "Off")
-
-        st.markdown('<div class="section-title">User Recommendation Inspector</div>', unsafe_allow_html=True)
 
         users = sorted(recs["user_id"].unique()) if "user_id" in recs.columns else []
         selected_user = st.selectbox("Select user", users)
@@ -800,19 +809,7 @@ elif page == "Recommendation Engine":
         left, right = st.columns([1.05, 0.95])
 
         with left:
-            st.markdown('<div class="section-title">Top Personalized Recommendations</div>', unsafe_allow_html=True)
-
-            show_cols = [
-                "rec_rank",
-                "title",
-                "recommendation_type",
-                "reason",
-                "score",
-                "confidence",
-                "content_genre",
-                "content_language",
-            ]
-
+            show_cols = ["rec_rank", "title", "recommendation_type", "reason", "score", "confidence", "content_genre", "content_language"]
             existing_cols = [col for col in show_cols if col in user_recs.columns]
             display_recs = user_recs[existing_cols].copy()
 
@@ -820,12 +817,12 @@ elif page == "Recommendation Engine":
                 if col in display_recs.columns:
                     display_recs[col] = display_recs[col].map(lambda x: f"{float(x):.3f}")
 
+            st.markdown('<div class="section-title">Top Personalized Recommendations</div>', unsafe_allow_html=True)
             st.dataframe(display_recs, use_container_width=True, hide_index=True)
 
         with right:
             if not user_recs.empty:
                 best = user_recs.iloc[0]
-
                 st.markdown(
                     f"""
                     <div class="insight-card">
@@ -844,7 +841,7 @@ elif page == "Recommendation Engine":
                         </p>
                     </div>
                     """,
-                    unsafe_allow_html=True
+                    unsafe_allow_html=True,
                 )
 
                 if "user_profile" in best:
@@ -855,49 +852,33 @@ elif page == "Recommendation Engine":
                             <p class="small-muted">{best.get("user_profile", "")}</p>
                         </div>
                         """,
-                        unsafe_allow_html=True
+                        unsafe_allow_html=True,
                     )
 
-        st.markdown('<div class="section-title">Hybrid Score Breakdown</div>', unsafe_allow_html=True)
-        st.markdown(
-            '<div class="section-caption">Shows how each recommendation combines collaborative filtering, content similarity, country trends, and popularity.</div>',
-            unsafe_allow_html=True
-        )
-
-        score_cols = [
-            "model_cf_score",
-            "user_cf_score",
-            "item_cf_score",
-            "content_score",
-            "country_score",
-            "popularity_score",
-        ]
-
+        score_cols = ["model_cf_score", "user_cf_score", "item_cf_score", "content_score", "country_score", "popularity_score"]
         available_score_cols = [col for col in score_cols if col in user_recs.columns]
 
         if available_score_cols and not user_recs.empty:
-            top_breakdown = user_recs.head(5).copy()
-
             breakdown_rows = []
-
-            for _, row in top_breakdown.iterrows():
+            for _, row in user_recs.head(5).iterrows():
                 title = row.get("title", "Unknown")
                 for col in available_score_cols:
-                    breakdown_rows.append({
-                        "title": title,
-                        "signal": col.replace("_", " ").replace("cf", "CF").title(),
-                        "score": float(row.get(col, 0))
-                    })
+                    breakdown_rows.append(
+                        {
+                            "title": title,
+                            "signal": col.replace("_", " ").replace("cf", "CF").title(),
+                            "score": float(row.get(col, 0)),
+                        }
+                    )
 
             breakdown_df = pd.DataFrame(breakdown_rows)
-
             fig = px.bar(
                 breakdown_df,
                 x="title",
                 y="score",
                 color="signal",
                 barmode="group",
-                title="Recommendation Signal Breakdown for Selected User"
+                title="Recommendation Signal Breakdown for Selected User",
             )
             fig.update_xaxes(tickangle=-25)
             fig = plotly_theme(fig, height=500)
@@ -906,42 +887,20 @@ elif page == "Recommendation Engine":
         col_a, col_b = st.columns([1, 1])
 
         with col_a:
-            st.markdown('<div class="section-title">Recommendation Method Distribution</div>', unsafe_allow_html=True)
-
             if "recommendation_type" in recs.columns:
                 method_counts = recs["recommendation_type"].value_counts().reset_index()
                 method_counts.columns = ["recommendation_type", "count"]
-
-                fig = px.pie(
-                    method_counts,
-                    names="recommendation_type",
-                    values="count",
-                    hole=0.55,
-                    title="Dominant Recommendation Method"
-                )
+                fig = px.pie(method_counts, names="recommendation_type", values="count", hole=0.55, title="Dominant Recommendation Method")
                 fig = plotly_theme(fig, height=430)
                 st.plotly_chart(fig, use_container_width=True)
-            else:
-                empty_state("Method distribution unavailable", "recommendation_type column not found.")
 
         with col_b:
-            st.markdown('<div class="section-title">Most Recommended Titles</div>', unsafe_allow_html=True)
-
             if "title" in recs.columns:
                 popular_recs = recs["title"].value_counts().head(10).reset_index()
                 popular_recs.columns = ["title", "recommendation_count"]
-
-                fig = px.bar(
-                    popular_recs,
-                    x="recommendation_count",
-                    y="title",
-                    orientation="h",
-                    title="Most Frequently Recommended Titles"
-                )
+                fig = px.bar(popular_recs, x="recommendation_count", y="title", orientation="h", title="Most Frequently Recommended Titles")
                 fig = plotly_theme(fig, height=430)
                 st.plotly_chart(fig, use_container_width=True)
-
-        st.markdown('<div class="section-title">Recommendation Quality Table</div>', unsafe_allow_html=True)
 
         quality_cols = [
             "user_id",
@@ -958,20 +917,10 @@ elif page == "Recommendation Engine":
             "popularity_score",
             "reason",
         ]
-
         existing_quality_cols = [col for col in quality_cols if col in recs.columns]
         quality_df = recs[existing_quality_cols].copy()
 
-        for col in [
-            "score",
-            "confidence",
-            "model_cf_score",
-            "user_cf_score",
-            "item_cf_score",
-            "content_score",
-            "country_score",
-            "popularity_score",
-        ]:
+        for col in ["score", "confidence", "model_cf_score", "user_cf_score", "item_cf_score", "content_score", "country_score", "popularity_score"]:
             if col in quality_df.columns:
                 quality_df[col] = quality_df[col].map(lambda x: f"{float(x):.3f}")
 
@@ -980,34 +929,258 @@ elif page == "Recommendation Engine":
         else:
             quality_df = quality_df.sort_values(["user_id"])
 
-        st.dataframe(
-            quality_df.head(100),
-            use_container_width=True,
-            hide_index=True
+        st.markdown('<div class="section-title">Recommendation Quality Table</div>', unsafe_allow_html=True)
+        st.dataframe(quality_df.head(100), use_container_width=True, hide_index=True)
+
+
+# ============================================================
+# GENAI STUDIO
+# ============================================================
+
+elif page == "GenAI Studio":
+    st.markdown('<div class="section-title">Gemini GenAI Studio</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-caption">A GenAI product layer for executive intelligence, retention campaigns, content metadata enrichment, and natural-language analytics.</div>',
+        unsafe_allow_html=True,
+    )
+
+    g1, g2, g3, g4 = st.columns(4)
+    g1.metric("Executive Briefs", format_number(len(summaries)))
+    g2.metric("Retention Campaigns", format_number(len(retention_campaigns)))
+    g3.metric("Enriched Titles", format_number(len(content_enrichment)))
+    g4.metric("GenAI Provider", "Gemini API")
+
+    genai_tab_1, genai_tab_2, genai_tab_3, genai_tab_4 = st.tabs(
+        [
+            "Executive Brief",
+            "Retention Campaigns",
+            "Content Enrichment",
+            "AI Analytics Copilot",
+        ]
+    )
+
+    with genai_tab_1:
+        st.markdown('<div class="section-title">Gemini Executive Intelligence Brief</div>', unsafe_allow_html=True)
+
+        if summaries.empty:
+            empty_state(
+                "No executive summary found",
+                "Run: python -m src.genai_summary",
+            )
+        else:
+            latest = summaries.sort_values("generated_at").iloc[-1]
+
+            st.markdown(
+                f"""
+                <div class="genai-card">
+                    <h2 style="margin-top:0;">Daily OTT Intelligence Brief</h2>
+                    <p class="small-muted">Generated for: {latest.get("summary_date", "Latest Date")}</p>
+                    <div style="white-space: pre-wrap; line-height: 1.75; color: rgba(255,255,255,0.90);">
+                    {latest.get("summary_text", "")}
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            st.markdown(
+                """
+                <div class="glass-card">
+                    <h3 style="margin-top:0;">What this demonstrates</h3>
+                    <p class="small-muted">
+                    This layer uses Gemini to convert warehouse metrics into a leadership-ready intelligence brief.
+                    It shows how GenAI can sit on top of a data warehouse and explain trends, risks, and recommended actions.
+                    </p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+    with genai_tab_2:
+        st.markdown('<div class="section-title">Gemini Retention Campaign Generator</div>', unsafe_allow_html=True)
+
+        if retention_campaigns.empty:
+            empty_state(
+                "No retention campaigns found",
+                "Run: python -m src.genai_retention_campaigns",
+            )
+        else:
+            high_count = len(retention_campaigns[retention_campaigns["risk_level"].str.lower() == "high"]) if "risk_level" in retention_campaigns.columns else 0
+            medium_count = len(retention_campaigns[retention_campaigns["risk_level"].str.lower() == "medium"]) if "risk_level" in retention_campaigns.columns else 0
+
+            c1, c2, c3 = st.columns(3)
+            c1.metric("High-Risk Campaigns", format_number(high_count))
+            c2.metric("Medium-Risk Campaigns", format_number(medium_count))
+            c3.metric("Channels", "Push / WhatsApp")
+
+            if "risk_level" in retention_campaigns.columns:
+                campaign_counts = retention_campaigns["risk_level"].value_counts().reset_index()
+                campaign_counts.columns = ["risk_level", "campaigns"]
+                fig = px.pie(campaign_counts, names="risk_level", values="campaigns", hole=0.55, title="Campaigns by Risk Level")
+                fig = plotly_theme(fig, height=380)
+                st.plotly_chart(fig, use_container_width=True)
+
+            selected_campaign_user = st.selectbox(
+                "Inspect generated campaign for user",
+                sorted(retention_campaigns["user_id"].unique()) if "user_id" in retention_campaigns.columns else [],
+            )
+
+            user_campaign = retention_campaigns[retention_campaigns["user_id"] == selected_campaign_user].head(1)
+
+            if not user_campaign.empty:
+                row = user_campaign.iloc[0]
+
+                st.markdown(
+                    f"""
+                    <div class="genai-card">
+                        <h3 style="margin-top:0;">Campaign for {row.get("user_id", "N/A")}</h3>
+                        <p>
+                            <b>Risk:</b> {row.get("risk_level", "N/A")}<br>
+                            <b>Reason:</b> {row.get("risk_reason", "N/A")}<br>
+                            <b>Recommended Title:</b> {row.get("recommended_title", "N/A")}<br>
+                            <b>Channel:</b> {row.get("campaign_channel", "N/A")}
+                        </p>
+                        <h4>Generated Message</h4>
+                        <p style="font-size:1.05rem; line-height:1.65;">{row.get("campaign_message", "")}</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+            show_cols = [
+                "user_id",
+                "risk_level",
+                "churn_probability",
+                "risk_reason",
+                "recommended_title",
+                "campaign_message",
+                "campaign_channel",
+                "country",
+            ]
+            existing_cols = [c for c in show_cols if c in retention_campaigns.columns]
+            display_campaigns = retention_campaigns[existing_cols].copy()
+
+            if "churn_probability" in display_campaigns.columns:
+                display_campaigns["churn_probability"] = display_campaigns["churn_probability"].map(lambda x: f"{float(x):.1%}")
+
+            st.dataframe(display_campaigns, use_container_width=True, hide_index=True)
+
+    with genai_tab_3:
+        st.markdown('<div class="section-title">Gemini Content Metadata Enrichment</div>', unsafe_allow_html=True)
+
+        if content_enrichment.empty:
+            empty_state(
+                "No enriched metadata found",
+                "Run: python -m src.genai_content_enrichment",
+            )
+        else:
+            e1, e2, e3 = st.columns(3)
+            e1.metric("Enriched Titles", format_number(len(content_enrichment)))
+            e2.metric("Metadata Fields", "6")
+            e3.metric("Use Cases", "Search + Discovery")
+
+            selected_title = st.selectbox(
+                "Select enriched title",
+                sorted(content_enrichment["title"].dropna().unique()) if "title" in content_enrichment.columns else [],
+            )
+
+            title_row = content_enrichment[content_enrichment["title"] == selected_title].head(1)
+
+            if not title_row.empty:
+                row = title_row.iloc[0]
+
+                st.markdown(
+                    f"""
+                    <div class="genai-card">
+                        <h2 style="margin-top:0;">{row.get("title", "N/A")}</h2>
+                        <p><b>Short Summary:</b> {row.get("short_summary", "")}</p>
+                        <p><b>Mood Tags:</b> {row.get("mood_tags", "")}</p>
+                        <p><b>Theme Tags:</b> {row.get("theme_tags", "")}</p>
+                        <p><b>Search Keywords:</b> {row.get("search_keywords", "")}</p>
+                        <p><b>Audience Segment:</b> {row.get("audience_segment", "")}</p>
+                        <p><b>Recommendation Blurb:</b> {row.get("recommendation_blurb", "")}</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+            show_cols = [
+                "title",
+                "short_summary",
+                "mood_tags",
+                "theme_tags",
+                "search_keywords",
+                "audience_segment",
+                "recommendation_blurb",
+            ]
+            existing_cols = [c for c in show_cols if c in content_enrichment.columns]
+            st.dataframe(content_enrichment[existing_cols], use_container_width=True, hide_index=True)
+
+            st.markdown(
+                """
+                <div class="glass-card">
+                    <h3 style="margin-top:0;">OTT Relevance</h3>
+                    <p class="small-muted">
+                    Streaming platforms rely heavily on metadata quality for search, personalization,
+                    content discovery, recommendation explanations, and regional content packaging.
+                    This module shows how GenAI can enrich weak catalog metadata automatically.
+                    </p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+    with genai_tab_4:
+        st.markdown('<div class="section-title">AI Analytics Copilot</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="section-caption">Ask business questions in natural language. The copilot maps them to safe read-only SQL templates.</div>',
+            unsafe_allow_html=True,
         )
 
-        st.markdown(
-            """
-            <div class="insight-card">
-                <h3 style="margin-top:0;">Interview Explanation</h3>
-                <p>
-                    The recommendation engine uses a hybrid strategy. For users with watch history,
-                    it combines model-based collaborative filtering, item similarity, user similarity,
-                    content metadata similarity, country trends, and global popularity.
-                </p>
-                <p>
-                    For cold-start or low-history users, it falls back to country-trending and
-                    globally popular titles. Every recommendation is explainable through a reason string
-                    and per-signal score breakdown.
-                </p>
-                <p class="small-muted">
-                    This is directly relevant to OTT platforms because recommendations affect watch time,
-                    content discovery, personalization quality, and subscriber retention.
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        example_questions = [
+            "Which users are at highest churn risk?",
+            "Which content has the highest watch time?",
+            "Which countries have the most engagement?",
+            "Which devices have the worst playback quality?",
+            "Show top recommendations.",
+            "Show revenue and payment failures.",
+            "Show raw event type distribution.",
+        ]
+
+        selected_question = st.selectbox("Try an example question", example_questions)
+        custom_question = st.text_input("Or ask your own analytics question", value=selected_question)
+
+        generated_sql = classify_question_to_sql(custom_question)
+
+        st.markdown('<div class="section-title">Generated SQL</div>', unsafe_allow_html=True)
+        st.code(generated_sql.strip(), language="sql")
+
+        if st.button("Run Copilot Query"):
+            result = run_safe_query(generated_sql)
+            st.markdown('<div class="section-title">Copilot Answer Table</div>', unsafe_allow_html=True)
+
+            if "error" in result.columns:
+                st.error(result["error"].iloc[0])
+            else:
+                st.dataframe(result, use_container_width=True, hide_index=True)
+
+                if not result.empty:
+                    st.markdown(
+                        f"""
+                        <div class="genai-card">
+                            <h3 style="margin-top:0;">Plain-English Answer</h3>
+                            <p>
+                            The copilot found <b>{len(result)}</b> matching records for your question.
+                            The table above is generated from the warehouse using a safe read-only SQL template.
+                            </p>
+                            <p class="small-muted">
+                            This demonstrates the architecture of a GenAI analytics assistant:
+                            natural-language question → SQL intent mapping → warehouse query → business-readable answer.
+                            </p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
 
 
 # ============================================================
@@ -1019,14 +1192,11 @@ elif page == "Playback Quality":
         empty_state("No playback metrics yet", "Run the pipeline to create device_quality_metrics.")
     else:
         st.markdown('<div class="section-title">Playback Quality Observatory</div>', unsafe_allow_html=True)
-        st.markdown(
-            '<div class="section-caption">Monitor buffering and quality issues that can damage user experience and retention.</div>',
-            unsafe_allow_html=True
-        )
 
         total_buffering = device["total_buffering_events"].sum() if "total_buffering_events" in device.columns else 0
         avg_quality = device["avg_quality_score"].mean() if "avg_quality_score" in device.columns else 0
         worst_device = "N/A"
+
         if "total_buffering_events" in device.columns and "device" in device.columns:
             worst_device = device.sort_values("total_buffering_events", ascending=False).iloc[0]["device"]
 
@@ -1042,7 +1212,7 @@ elif page == "Playback Quality":
                 device.sort_values("total_buffering_events", ascending=False),
                 x="device",
                 y="total_buffering_events",
-                title="Buffering Events by Device"
+                title="Buffering Events by Device",
             )
             fig = plotly_theme(fig, height=430)
             st.plotly_chart(fig, use_container_width=True)
@@ -1052,17 +1222,12 @@ elif page == "Playback Quality":
                 device.sort_values("avg_quality_score", ascending=True),
                 x="device",
                 y="avg_quality_score",
-                title="Average Quality Score by Device"
+                title="Average Quality Score by Device",
             )
             fig2 = plotly_theme(fig2, height=430)
             st.plotly_chart(fig2, use_container_width=True)
 
-        st.markdown('<div class="section-title">Device Quality Table</div>', unsafe_allow_html=True)
-        st.dataframe(
-            device.sort_values("total_buffering_events", ascending=False),
-            use_container_width=True,
-            hide_index=True
-        )
+        st.dataframe(device.sort_values("total_buffering_events", ascending=False), use_container_width=True, hide_index=True)
 
         st.markdown(
             f"""
@@ -1075,7 +1240,7 @@ elif page == "Playback Quality":
                 </p>
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
 
@@ -1085,22 +1250,15 @@ elif page == "Playback Quality":
 
 elif page == "Pipeline Health":
     st.markdown('<div class="section-title">Data Pipeline Health</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="section-caption">Track raw ingestion, cleaned event volume, and event type distribution.</div>',
-        unsafe_allow_html=True
-    )
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Raw Events", format_number(len(raw)))
     c2.metric("Clean Watch Events", format_number(len(clean_watch)))
     c3.metric("Clean Business Events", format_number(len(clean_business)))
-    c4.metric("Pipeline Tables", "10+")
+    c4.metric("Pipeline Tables", "13+")
 
     if raw.empty:
-        empty_state(
-            "No raw events found",
-            "Start the Kafka producer and consumer to load raw events into PostgreSQL."
-        )
+        empty_state("No raw events found", "Start Kafka producer and consumer to load raw events into PostgreSQL.")
     else:
         left, right = st.columns([1, 1])
 
@@ -1122,20 +1280,17 @@ elif page == "Pipeline Health":
                     <p><b>2.</b> Kafka-compatible Redpanda streams events</p>
                     <p><b>3.</b> Consumer writes raw events to PostgreSQL</p>
                     <p><b>4.</b> Airflow/Python pipeline cleans and transforms events</p>
-                    <p><b>5.</b> ML and recommendation jobs generate intelligence tables</p>
-                    <p><b>6.</b> Streamlit dashboard visualizes insights</p>
+                    <p><b>5.</b> ML jobs generate churn intelligence</p>
+                    <p><b>6.</b> Recommendation engine generates personalized titles</p>
+                    <p><b>7.</b> Gemini layer generates executive briefs, campaigns, and metadata</p>
+                    <p><b>8.</b> Streamlit dashboard visualizes insights</p>
                 </div>
                 """,
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
 
-        st.markdown('<div class="section-title">Latest Raw Events</div>', unsafe_allow_html=True)
         if "inserted_at" in raw.columns:
-            st.dataframe(
-                raw.sort_values("inserted_at", ascending=False).head(80),
-                use_container_width=True,
-                hide_index=True
-            )
+            st.dataframe(raw.sort_values("inserted_at", ascending=False).head(80), use_container_width=True, hide_index=True)
         else:
             st.dataframe(raw.head(80), use_container_width=True, hide_index=True)
 
@@ -1146,13 +1301,9 @@ elif page == "Pipeline Health":
 
 elif page == "Executive Summary":
     st.markdown('<div class="section-title">AI-Style Executive Summary</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="section-caption">A GenAI-style business narrative generated from warehouse metrics.</div>',
-        unsafe_allow_html=True
-    )
 
     if summaries.empty:
-        empty_state("No executive summary yet", "Run the executive summary pipeline.")
+        empty_state("No executive summary yet", "Run: python -m src.genai_summary")
     else:
         latest = summaries.sort_values("generated_at").iloc[-1]
 
@@ -1168,7 +1319,7 @@ elif page == "Executive Summary":
                     </div>
                 </div>
                 """,
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
 
         with c2:
@@ -1183,18 +1334,12 @@ elif page == "Executive Summary":
                     </p>
                 </div>
                 """,
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
 
         if not daily.empty:
             daily_sorted = daily.sort_values("metric_date")
-            fig = px.line(
-                daily_sorted,
-                x="metric_date",
-                y="total_watch_minutes",
-                markers=True,
-                title="Metric Context Used by Summary"
-            )
+            fig = px.line(daily_sorted, x="metric_date", y="total_watch_minutes", markers=True, title="Metric Context Used by Summary")
             fig = plotly_theme(fig, height=390)
             st.plotly_chart(fig, use_container_width=True)
 
@@ -1206,8 +1351,8 @@ elif page == "Executive Summary":
 st.markdown(
     """
     <div class="footer-note">
-        StreamFlix DE · STARZPLAY-inspired project · Kafka-compatible event streaming · Airflow orchestration · ML intelligence · Hybrid recommendation engine · OTT analytics dashboard
+        StreamFlix DE · STARZPLAY-inspired project · Kafka-compatible event streaming · Airflow orchestration · ML intelligence · Hybrid recommendation engine · Gemini GenAI Studio · OTT analytics dashboard
     </div>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
