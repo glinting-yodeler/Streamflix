@@ -246,15 +246,6 @@ def format_money(value):
         return "PKR 0"
 
 
-def risk_color_label(risk):
-    risk = str(risk).lower()
-    if risk == "high":
-        return "🔴 High"
-    if risk == "medium":
-        return "🟠 Medium"
-    return "🟢 Low"
-
-
 def empty_state(title, message):
     st.markdown(
         f"""
@@ -298,10 +289,14 @@ daily = load_table("daily_metrics")
 country = load_table("country_metrics")
 content = load_table("content_performance")
 device = load_table("device_quality_metrics")
+
 churn = load_table("churn_predictions")
 churn_metrics = load_table("churn_model_metrics")
 churn_importance = load_table("churn_feature_importance")
+
 recs = load_table("recommendations")
+recommendation_metrics = load_table("recommendation_model_metrics")
+
 summaries = load_table("executive_summaries")
 raw = load_table("raw_events")
 clean_watch = load_table("clean_watch_events")
@@ -379,7 +374,7 @@ st.markdown(
             <span class="pill">Real-time event ingestion</span>
             <span class="pill">Batch analytics pipeline</span>
             <span class="pill">Churn prediction</span>
-            <span class="pill">Recommendation system</span>
+            <span class="pill">Hybrid recommendation engine</span>
             <span class="pill">Executive insight layer</span>
         </div>
     </div>
@@ -764,71 +759,250 @@ elif page == "Recommendation Engine":
     if recs.empty:
         empty_state("No recommendations yet", "Run the recommendation pipeline to populate the recommendations table.")
     else:
-        st.markdown('<div class="section-title">Personalized Recommendation Engine</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">Hybrid Recommendation Intelligence</div>', unsafe_allow_html=True)
         st.markdown(
-            '<div class="section-caption">User-level recommendations generated from viewing behavior, country trends, and content affinity.</div>',
+            '<div class="section-caption">Personalized OTT recommendations using user-based CF, item-based CF, model-based matrix factorization, content similarity, country trends, and popularity signals.</div>',
             unsafe_allow_html=True
         )
 
         total_recs = len(recs)
         total_users = recs["user_id"].nunique() if "user_id" in recs.columns else 0
         avg_score = recs["score"].mean() if "score" in recs.columns else 0
+        catalog_coverage = 0
 
-        c1, c2, c3 = st.columns(3)
+        if not recommendation_metrics.empty and "catalog_coverage" in recommendation_metrics.columns:
+            catalog_coverage = recommendation_metrics.sort_values("generated_at").iloc[-1].get("catalog_coverage", 0)
+
+        c1, c2, c3, c4 = st.columns(4)
         c1.metric("Recommended Items", format_number(total_recs))
         c2.metric("Users Covered", format_number(total_users))
-        c3.metric("Avg Recommendation Score", f"{float(avg_score):.2f}")
+        c3.metric("Avg Hybrid Score", f"{float(avg_score):.3f}")
+        c4.metric("Catalog Coverage", f"{float(catalog_coverage):.1%}")
+
+        if not recommendation_metrics.empty:
+            latest_metrics = recommendation_metrics.sort_values("generated_at").iloc[-1]
+
+            st.markdown('<div class="section-title">Recommendation System Status</div>', unsafe_allow_html=True)
+
+            s1, s2, s3, s4 = st.columns(4)
+            s1.metric("Model-Based CF", "Enabled" if latest_metrics.get("model_based_enabled", False) else "Off")
+            s2.metric("User-Based CF", "Enabled" if latest_metrics.get("user_cf_enabled", False) else "Off")
+            s3.metric("Item-Based CF", "Enabled" if latest_metrics.get("item_cf_enabled", False) else "Off")
+            s4.metric("Content-Based", "Enabled" if latest_metrics.get("content_based_enabled", False) else "Off")
+
+        st.markdown('<div class="section-title">User Recommendation Inspector</div>', unsafe_allow_html=True)
 
         users = sorted(recs["user_id"].unique()) if "user_id" in recs.columns else []
-        selected_user = st.selectbox("Select a user to inspect recommendations", users)
+        selected_user = st.selectbox("Select user", users)
 
         user_recs = recs[recs["user_id"] == selected_user].sort_values("score", ascending=False)
 
-        left, right = st.columns([1.15, 0.85])
+        left, right = st.columns([1.05, 0.95])
 
         with left:
-            st.markdown('<div class="section-title">Top Recommendations</div>', unsafe_allow_html=True)
-            cols = [col for col in ["title", "reason", "score"] if col in user_recs.columns]
-            st.dataframe(user_recs[cols], use_container_width=True, hide_index=True)
+            st.markdown('<div class="section-title">Top Personalized Recommendations</div>', unsafe_allow_html=True)
+
+            show_cols = [
+                "rec_rank",
+                "title",
+                "recommendation_type",
+                "reason",
+                "score",
+                "confidence",
+                "content_genre",
+                "content_language",
+            ]
+
+            existing_cols = [col for col in show_cols if col in user_recs.columns]
+            display_recs = user_recs[existing_cols].copy()
+
+            for col in ["score", "confidence"]:
+                if col in display_recs.columns:
+                    display_recs[col] = display_recs[col].map(lambda x: f"{float(x):.3f}")
+
+            st.dataframe(display_recs, use_container_width=True, hide_index=True)
 
         with right:
             if not user_recs.empty:
                 best = user_recs.iloc[0]
+
                 st.markdown(
                     f"""
                     <div class="insight-card">
                         <h3 style="margin-top:0;">Best Next Watch</h3>
-                        <h2>{best.get("title", "N/A")}</h2>
-                        <p>{best.get("reason", "Recommended based on user behavior.")}</p>
+                        <h2 style="margin-bottom:6px;">{best.get("title", "N/A")}</h2>
                         <p class="small-muted">
-                            Recommendation score: <b>{best.get("score", 0):.2f}</b>
+                            {best.get("content_genre", "Unknown")} · {best.get("content_language", "Unknown")}
+                        </p>
+                        <p>
+                            <b>Method:</b> {best.get("recommendation_type", "Hybrid recommendation")}<br>
+                            <b>Hybrid score:</b> {float(best.get("score", 0)):.3f}<br>
+                            <b>Confidence:</b> {float(best.get("confidence", 0)):.1%}
+                        </p>
+                        <p class="small-muted">
+                            {best.get("reason", "Recommended based on hybrid user-content affinity.")}
                         </p>
                     </div>
                     """,
                     unsafe_allow_html=True
                 )
 
-        if "title" in recs.columns:
-            popular_recs = recs["title"].value_counts().head(10).reset_index()
-            popular_recs.columns = ["title", "recommendation_count"]
+                if "user_profile" in best:
+                    st.markdown(
+                        f"""
+                        <div class="glass-card">
+                            <h3 style="margin-top:0;">User Profile Summary</h3>
+                            <p class="small-muted">{best.get("user_profile", "")}</p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
+        st.markdown('<div class="section-title">Hybrid Score Breakdown</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="section-caption">Shows how each recommendation combines collaborative filtering, content similarity, country trends, and popularity.</div>',
+            unsafe_allow_html=True
+        )
+
+        score_cols = [
+            "model_cf_score",
+            "user_cf_score",
+            "item_cf_score",
+            "content_score",
+            "country_score",
+            "popularity_score",
+        ]
+
+        available_score_cols = [col for col in score_cols if col in user_recs.columns]
+
+        if available_score_cols and not user_recs.empty:
+            top_breakdown = user_recs.head(5).copy()
+
+            breakdown_rows = []
+
+            for _, row in top_breakdown.iterrows():
+                title = row.get("title", "Unknown")
+                for col in available_score_cols:
+                    breakdown_rows.append({
+                        "title": title,
+                        "signal": col.replace("_", " ").replace("cf", "CF").title(),
+                        "score": float(row.get(col, 0))
+                    })
+
+            breakdown_df = pd.DataFrame(breakdown_rows)
+
             fig = px.bar(
-                popular_recs,
+                breakdown_df,
                 x="title",
-                y="recommendation_count",
-                title="Most Frequently Recommended Titles"
+                y="score",
+                color="signal",
+                barmode="group",
+                title="Recommendation Signal Breakdown for Selected User"
             )
-            fig.update_xaxes(tickangle=-35)
-            fig = plotly_theme(fig, height=440)
+            fig.update_xaxes(tickangle=-25)
+            fig = plotly_theme(fig, height=500)
             st.plotly_chart(fig, use_container_width=True)
+
+        col_a, col_b = st.columns([1, 1])
+
+        with col_a:
+            st.markdown('<div class="section-title">Recommendation Method Distribution</div>', unsafe_allow_html=True)
+
+            if "recommendation_type" in recs.columns:
+                method_counts = recs["recommendation_type"].value_counts().reset_index()
+                method_counts.columns = ["recommendation_type", "count"]
+
+                fig = px.pie(
+                    method_counts,
+                    names="recommendation_type",
+                    values="count",
+                    hole=0.55,
+                    title="Dominant Recommendation Method"
+                )
+                fig = plotly_theme(fig, height=430)
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                empty_state("Method distribution unavailable", "recommendation_type column not found.")
+
+        with col_b:
+            st.markdown('<div class="section-title">Most Recommended Titles</div>', unsafe_allow_html=True)
+
+            if "title" in recs.columns:
+                popular_recs = recs["title"].value_counts().head(10).reset_index()
+                popular_recs.columns = ["title", "recommendation_count"]
+
+                fig = px.bar(
+                    popular_recs,
+                    x="recommendation_count",
+                    y="title",
+                    orientation="h",
+                    title="Most Frequently Recommended Titles"
+                )
+                fig = plotly_theme(fig, height=430)
+                st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown('<div class="section-title">Recommendation Quality Table</div>', unsafe_allow_html=True)
+
+        quality_cols = [
+            "user_id",
+            "rec_rank",
+            "title",
+            "recommendation_type",
+            "score",
+            "confidence",
+            "model_cf_score",
+            "user_cf_score",
+            "item_cf_score",
+            "content_score",
+            "country_score",
+            "popularity_score",
+            "reason",
+        ]
+
+        existing_quality_cols = [col for col in quality_cols if col in recs.columns]
+        quality_df = recs[existing_quality_cols].copy()
+
+        for col in [
+            "score",
+            "confidence",
+            "model_cf_score",
+            "user_cf_score",
+            "item_cf_score",
+            "content_score",
+            "country_score",
+            "popularity_score",
+        ]:
+            if col in quality_df.columns:
+                quality_df[col] = quality_df[col].map(lambda x: f"{float(x):.3f}")
+
+        if "rec_rank" in quality_df.columns:
+            quality_df = quality_df.sort_values(["user_id", "rec_rank"])
+        else:
+            quality_df = quality_df.sort_values(["user_id"])
+
+        st.dataframe(
+            quality_df.head(100),
+            use_container_width=True,
+            hide_index=True
+        )
 
         st.markdown(
             """
-            <div class="glass-card">
-                <h3 style="margin-top:0;">Product Thinking</h3>
+            <div class="insight-card">
+                <h3 style="margin-top:0;">Interview Explanation</h3>
+                <p>
+                    The recommendation engine uses a hybrid strategy. For users with watch history,
+                    it combines model-based collaborative filtering, item similarity, user similarity,
+                    content metadata similarity, country trends, and global popularity.
+                </p>
+                <p>
+                    For cold-start or low-history users, it falls back to country-trending and
+                    globally popular titles. Every recommendation is explainable through a reason string
+                    and per-signal score breakdown.
+                </p>
                 <p class="small-muted">
-                    For an OTT platform, recommendations are not only a machine learning feature.
-                    They are a retention mechanism. Better recommendations increase watch time,
-                    improve content discovery, and reduce subscription cancellation risk.
+                    This is directly relevant to OTT platforms because recommendations affect watch time,
+                    content discovery, personalization quality, and subscriber retention.
                 </p>
             </div>
             """,
@@ -920,7 +1094,7 @@ elif page == "Pipeline Health":
     c1.metric("Raw Events", format_number(len(raw)))
     c2.metric("Clean Watch Events", format_number(len(clean_watch)))
     c3.metric("Clean Business Events", format_number(len(clean_business)))
-    c4.metric("Pipeline Tables", "9+")
+    c4.metric("Pipeline Tables", "10+")
 
     if raw.empty:
         empty_state(
@@ -1032,7 +1206,7 @@ elif page == "Executive Summary":
 st.markdown(
     """
     <div class="footer-note">
-        StreamFlix DE · STARZPLAY-inspired project · Kafka-compatible event streaming · Airflow orchestration · ML intelligence · OTT analytics dashboard
+        StreamFlix DE · STARZPLAY-inspired project · Kafka-compatible event streaming · Airflow orchestration · ML intelligence · Hybrid recommendation engine · OTT analytics dashboard
     </div>
     """,
     unsafe_allow_html=True
