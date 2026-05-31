@@ -1,337 +1,525 @@
-# StreamFlix DE
+# StreamFlix DE Project Documentation
 
-**StreamFlix DE** is a STARZPLAY-inspired data engineering portfolio project for an OTT/video-streaming platform.
+## 1. Purpose
 
-It simulates watch events, searches, payments, subscription changes, and playback-quality events. The project streams events through **Kafka-compatible Redpanda**, stores raw data in **PostgreSQL**, orchestrates ETL/ML jobs with **Airflow**, and visualizes insights in a **Streamlit dashboard**.
+StreamFlix DE is a portfolio-grade OTT streaming analytics project designed to demonstrate a complete data engineering and AI workflow.
 
-## What this project shows
-
-- Kafka-style event-driven ingestion
-- Raw event storage in PostgreSQL
-- Airflow orchestration for ETL, analytics, ML, recommendations, and summaries
-- Data cleaning and dimensional-style analytics marts
-- Churn prediction using scikit-learn
-- Recommendation generation using content and country trends
-- GenAI-style executive summary generation with a free template fallback
-- Streamlit dashboard for OTT business insights
-
-## Architecture
+The project covers:
 
 ```text
-Synthetic OTT Event Producer
-        ↓
-Redpanda / Kafka topic: streamflix_events
-        ↓
-Python Kafka Consumer
-        ↓
-PostgreSQL raw_events
-        ↓
-Airflow DAG: streamflix_daily_pipeline
-        ↓
-clean_events → build_marts → train_churn → recommend → genai_summary
-        ↓
-PostgreSQL analytics tables
-        ↓
-Streamlit Dashboard
+Event ingestion
+Data storage
+ETL processing
+Analytics marts
+Machine learning
+Recommendation systems
+GenAI
+Dashboarding
 ```
 
-## Project structure
+The system simulates how a streaming business could use data to understand user behavior, content performance, playback quality, churn risk, and personalized recommendations.
+
+---
+
+## 2. System Architecture
 
 ```text
-streamflix-de/
-├── docker-compose.yml
-├── requirements.txt
-├── .env.example
-├── README.md
-├── producer/
-│   └── produce_events.py
-├── consumer/
-│   └── consume_events.py
-├── sql/
-│   └── create_tables.sql
-├── src/
-│   ├── db.py
-│   ├── seed_dimensions.py
-│   ├── clean_events.py
-│   ├── build_marts.py
-│   ├── train_churn.py
-│   ├── recommend.py
-│   ├── genai_summary.py
-│   └── run_pipeline.py
-├── airflow/
-│   └── dags/
-│       └── streamflix_pipeline.py
-├── app/
-│   └── streamlit_app.py
-├── models/
-├── data/
-│   └── processed/
-└── screenshots/
+Producer → Redpanda/Kafka → Consumer → PostgreSQL → Pipeline → Analytics/ML/GenAI → Streamlit Dashboard
+```
+
+### Producer
+
+The producer creates synthetic streaming events such as watch events, search events, payments, subscription changes, and playback-quality events.
+
+### Redpanda
+
+Redpanda is used as a Kafka-compatible event streaming layer.
+
+### Consumer
+
+The consumer reads events from Redpanda and writes them into the `raw_events` PostgreSQL table.
+
+### PostgreSQL
+
+PostgreSQL stores raw data, cleaned data, analytics marts, model outputs, recommendation outputs, and GenAI outputs.
+
+### Pipeline
+
+The pipeline transforms raw events into structured analytical tables and runs downstream intelligence jobs.
+
+### Dashboard
+
+The Streamlit dashboard provides an interface for viewing all analytics, ML, recommendation, GenAI, and pipeline health outputs.
+
+---
+
+## 3. Data Pipeline
+
+### Raw Layer
+
+Main table:
+
+```text
+raw_events
+```
+
+Contains the raw event stream from the consumer.
+
+### Clean Layer
+
+Tables:
+
+```text
+clean_watch_events
+clean_business_events
+```
+
+These tables separate watch/playback behavior from business events such as payments and subscriptions.
+
+### Analytics Layer
+
+Tables:
+
+```text
+daily_metrics
+country_metrics
+content_performance
+device_quality_metrics
+```
+
+These tables power the executive overview, content analytics, country analytics, and playback-quality dashboards.
+
+---
+
+## 4. Machine Learning Layer
+
+### Churn Prediction
+
+The churn model predicts the likelihood of a user cancelling or becoming inactive.
+
+Input table:
+
+```text
+user_features
+```
+
+Output tables:
+
+```text
+churn_predictions
+churn_model_metrics
+churn_feature_importance
+```
+
+### Features
+
+Example features:
+
+```text
+subscription_age_days
+total_watch_minutes
+watch_events
+avg_completion_rate
+days_since_last_watch
+buffering_count
+payment_failed_count
+num_genres_watched
+engagement_score
+friction_score
+```
+
+### Models
+
+The pipeline can compare multiple models such as:
+
+```text
+Logistic Regression
+Random Forest
+Extra Trees
+Gradient Boosting
+```
+
+The best model is selected using a weighted evaluation approach prioritizing AUC, recall, F1, and precision.
+
+### Outputs
+
+The churn layer produces:
+
+```text
+churn_probability
+risk_level
+risk_reason
+recommended_action
+```
+
+This turns model predictions into operational retention actions.
+
+---
+
+## 5. Recommendation System
+
+The recommendation engine is hybrid.
+
+It combines:
+
+```text
+Content-based filtering
+User-based collaborative filtering
+Item-based collaborative filtering
+Model-based matrix factorization
+Country-trending signals
+Global popularity fallback
+```
+
+### Output Table
+
+```text
+recommendations
+```
+
+Important columns:
+
+```text
+user_id
+content_id
+title
+recommendation_type
+reason
+score
+confidence
+model_cf_score
+user_cf_score
+item_cf_score
+content_score
+country_score
+popularity_score
+```
+
+### Recommendation Metrics
+
+```text
+recommendation_model_metrics
+```
+
+This table tracks:
+
+```text
+total_users
+total_content
+users_with_history
+total_recommendations
+catalog_coverage
+avg_hybrid_score
+model_based_enabled
+user_cf_enabled
+item_cf_enabled
+content_based_enabled
 ```
 
 ---
 
-# What you need to install
+## 6. GenAI Layer
 
-## Required
+The GenAI layer uses Gemini API with local fallback support.
 
-1. **Docker Desktop**
-   - Required for Redpanda/Kafka, PostgreSQL, and Airflow.
-   - Keep Docker Desktop running before using `docker compose`.
+### Gemini Client
 
-2. **Python 3.10 or 3.11**
-   - Python 3.11 is recommended.
+File:
 
-3. **Git**
-   - Optional, but useful if you upload this to GitHub.
+```text
+src/genai_client.py
+```
 
-4. **VS Code**
-   - Optional, but recommended.
+Responsibilities:
 
-## Not required
+```text
+Read Gemini API settings from environment
+Call Gemini model
+Return fallback output if API is disabled or fails
+```
 
-You do **not** need paid subscriptions for the core project.
+### Executive Summary
 
-The project uses a free template-based executive summary by default. You can later plug in OpenAI/Gemini/Ollama if you want, but it is not required.
+File:
+
+```text
+src/genai_summary.py
+```
+
+Output table:
+
+```text
+executive_summaries
+```
+
+Purpose:
+
+```text
+Convert warehouse metrics into a leadership-ready intelligence brief.
+```
+
+### Retention Campaigns
+
+File:
+
+```text
+src/genai_retention_campaigns.py
+```
+
+Output table:
+
+```text
+genai_retention_campaigns
+```
+
+Purpose:
+
+```text
+Generate short retention campaign messages for high-risk and medium-risk users.
+```
+
+### Content Metadata Enrichment
+
+File:
+
+```text
+src/genai_content_enrichment.py
+```
+
+Output table:
+
+```text
+genai_content_enrichment
+```
+
+Purpose:
+
+```text
+Generate content summaries, mood tags, search keywords, audience segments, and recommendation blurbs.
+```
+
+### AI Analytics Copilot
+
+The Streamlit dashboard includes a natural-language analytics copilot that maps common questions to safe read-only SQL templates.
+
+Example:
+
+```text
+Question:
+Which users are at highest churn risk?
+
+SQL:
+SELECT user_id, churn_probability, risk_level, risk_reason, recommended_action, country
+FROM churn_predictions
+ORDER BY churn_probability DESC
+LIMIT 10;
+```
 
 ---
 
-# Quick start
+## 7. Dashboard Documentation
 
-## 1. Unzip the project
+### Executive Overview
 
-Unzip this folder anywhere, for example:
+Purpose:
 
 ```text
-Desktop/streamflix-de
+Summarize platform-level health.
 ```
 
-Open a terminal in the project folder.
+Metrics:
 
-## 2. Copy environment file
-
-### Windows PowerShell
-
-```powershell
-copy .env.example .env
+```text
+Active users
+Watch hours
+Completion rate
+Revenue
+Payment failures
 ```
 
-### Mac/Linux
+### Content Performance
 
-```bash
-cp .env.example .env
+Purpose:
+
+```text
+Analyze content-market fit and engagement.
 ```
 
-## 3. Start Docker services
+Metrics:
+
+```text
+Top titles
+Watch time
+Completion rate
+Genre performance
+Viewer touchpoints
+```
+
+### Churn Intelligence
+
+Purpose:
+
+```text
+Identify users at risk and explain why.
+```
+
+Outputs:
+
+```text
+Risk distribution
+Highest-risk users
+Model comparison
+Feature importance
+Retention action queue
+```
+
+### Recommendation Engine
+
+Purpose:
+
+```text
+Explain personalized recommendations.
+```
+
+Outputs:
+
+```text
+Top recommendations
+Recommendation type
+Hybrid score
+Per-signal score breakdown
+Catalog coverage
+```
+
+### GenAI Studio
+
+Purpose:
+
+```text
+Show GenAI-powered business intelligence.
+```
+
+Sections:
+
+```text
+Executive brief
+Retention campaigns
+Content enrichment
+Analytics copilot
+```
+
+### Playback Quality
+
+Purpose:
+
+```text
+Monitor experience issues.
+```
+
+Metrics:
+
+```text
+Buffering events
+Quality score
+Worst device
+Device-level quality table
+```
+
+### Pipeline Health
+
+Purpose:
+
+```text
+Show data engineering pipeline health.
+```
+
+Metrics:
+
+```text
+Raw events
+Clean watch events
+Clean business events
+Event type distribution
+Latest raw events
+```
+
+---
+
+## 8. How to Run
+
+### Start Docker
 
 ```bash
 docker compose up -d
 ```
 
-This starts:
-
-- Redpanda/Kafka on `localhost:9092`
-- PostgreSQL on `localhost:5432`
-- Airflow UI on `localhost:8080`
-
-Wait 1-2 minutes for Airflow to fully start.
-
-## 4. Create a Python virtual environment
-
-### Windows PowerShell
+### Install dependencies
 
 ```powershell
 python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
+.\venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-### Mac/Linux
+### Run producer
 
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+```powershell
+.\venv\Scripts\python.exe producer\produce_events.py
 ```
 
-## 5. Start producing OTT events
+### Run consumer
 
-Open terminal 1:
-
-```bash
-python producer/produce_events.py
+```powershell
+.\venv\Scripts\python.exe consumer\consume_events.py
 ```
 
-You should see events being sent to Kafka.
+### Run pipeline
 
-## 6. Start consuming events into PostgreSQL
-
-Open terminal 2:
-
-```bash
-python consumer/consume_events.py
+```powershell
+$env:PYTHONPATH = "C:\Users\HP\Desktop\streamflix"
+.\venv\Scripts\python.exe -m src.run_pipeline
 ```
 
-Let producer and consumer run for 2-5 minutes. You should see inserted events.
+### Run GenAI modules
 
-## 7. Run the pipeline
-
-You have two options.
-
-### Option A: Run manually from terminal
-
-This is easiest for demos:
-
-```bash
-python src/run_pipeline.py
+```powershell
+$env:PYTHONPATH = "C:\Users\HP\Desktop\streamflix"
+.\venv\Scripts\python.exe -m src.genai_summary
+.\venv\Scripts\python.exe -m src.genai_retention_campaigns
+.\venv\Scripts\python.exe -m src.genai_content_enrichment
 ```
 
-### Option B: Run with Airflow
+### Run dashboard
 
-Open:
+```powershell
+.\venv\Scripts\streamlit.exe run app\streamlit_app.py
+```
+
+---
+
+## 9. Notes on Synthetic Data
+
+This project uses synthetic data. Therefore:
 
 ```text
-http://localhost:8080
+Model scores are used to validate the workflow.
+Recommendation outputs demonstrate system design.
+GenAI outputs demonstrate integration and product use cases.
+The project should not be interpreted as trained on real customer behavior.
 ```
 
-Login:
+---
+
+## 10. Portfolio Value
+
+This project demonstrates the ability to build a complete data product:
 
 ```text
-username: admin
-password: admin
+Backend event streaming
+Data warehouse design
+Data pipeline development
+ML workflow implementation
+Recommendation engine design
+GenAI integration
+Dashboard design
+Business-facing analytics storytelling
 ```
-
-Find and trigger:
-
-```text
-streamflix_daily_pipeline
-```
-
-## 8. Run the dashboard
-
-Open terminal 3:
-
-```bash
-streamlit run app/streamlit_app.py
-```
-
-The dashboard opens at:
-
-```text
-http://localhost:8501
-```
-
----
-
-# Dashboard pages
-
-The Streamlit dashboard includes:
-
-1. **Overview**
-   - total users
-   - active users
-   - total watch hours
-   - revenue
-   - payment failures
-   - buffering events
-
-2. **Content Analytics**
-   - top content by watch minutes
-   - completion rate
-   - genre and language performance
-
-3. **Churn + Recommendations**
-   - churn probability
-   - high-risk users
-   - suggested retention actions
-   - recommended content
-
-4. **Playback Quality**
-   - buffering by device
-   - playback quality by country/device
-
-5. **Executive Summary**
-   - automated business summary generated from analytics metrics
-
----
-
-# Common commands
-
-## Stop all services
-
-```bash
-docker compose down
-```
-
-## Stop and delete database volumes
-
-Use this only if you want a clean reset:
-
-```bash
-docker compose down -v
-```
-
-## Rebuild/restart everything
-
-```bash
-docker compose down
-docker compose up -d
-```
-
-## Run pipeline manually
-
-```bash
-python src/run_pipeline.py
-```
-
-## Run dashboard
-
-```bash
-streamlit run app/streamlit_app.py
-```
-
----
-
-# Demo flow for interview / LinkedIn video
-
-1. Show the architecture diagram in README.
-2. Start Docker services.
-3. Run producer to show streaming events.
-4. Run consumer to show data landing in PostgreSQL.
-5. Trigger Airflow DAG.
-6. Open Streamlit dashboard.
-7. Show churn predictions and recommendations.
-8. Show executive summary.
-
----
-
-# STARZPLAY relevance
-
-This project is relevant to streaming companies because it models common OTT problems:
-
-- user watch behavior
-- content performance
-- subscription retention
-- payment failures
-- playback quality
-- churn prediction
-- recommendations
-- executive reporting
-
----
-
-# Resume bullet
-
-> Built **StreamFlix DE**, a STARZPLAY-inspired data engineering project using Kafka-compatible Redpanda, Airflow, PostgreSQL, Python, and Streamlit; implemented event-driven ingestion for OTT watch/search/payment/playback events, scheduled ETL pipelines, engineered analytics features, trained a churn prediction model, generated recommendations, and visualized streaming business insights through an interactive dashboard.
-
----
-
-# Future improvements
-
-- Add dbt for warehouse modeling
-- Add Spark for distributed batch processing
-- Add MLflow for model tracking
-- Add real LLM API integration for executive summaries
-- Add Superset/Metabase dashboards
-- Add GitHub Actions CI/CD
-- Deploy dashboard to a cloud VM
