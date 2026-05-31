@@ -1,4 +1,4 @@
-StreamFlix DE Architecture
+StreamFlix Architecture
 
 1. Producer generates synthetic OTT events.
 2. Redpanda acts as Kafka-compatible streaming broker.
