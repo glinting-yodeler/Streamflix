@@ -1,8 +1,8 @@
-# StreamFlix DE Project Documentation
+# StreamFlix Project Documentation
 
 ## 1. Purpose
 
-StreamFlix DE is a portfolio-grade OTT streaming analytics project designed to demonstrate a complete data engineering and AI workflow.
+StreamFlix is a portfolio-grade OTT streaming analytics project designed to demonstrate a complete data engineering and AI workflow.
 
 The project covers:
 
