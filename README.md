@@ -2,13 +2,14 @@
 
 ## 1. Purpose
 
-StreamFlix is a portfolio-grade OTT streaming analytics project designed to demonstrate a complete data engineering and AI workflow.
+StreamFlix is a portfolio-grade OTT streaming analytics project designed to demonstrate a complete data engineering, orchestration, and AI workflow.
 
 The project covers:
 
 ```text
 Event ingestion
 Data storage
+Workflow orchestration with Apache Airflow
 ETL processing
 Analytics marts
 Machine learning
@@ -24,7 +25,7 @@ The system simulates how a streaming business could use data to understand user 
 ## 2. System Architecture
 
 ```text
-Producer → Redpanda/Kafka → Consumer → PostgreSQL → Pipeline → Analytics/ML/GenAI → Streamlit Dashboard
+Producer → Redpanda/Kafka → Consumer → PostgreSQL → Airflow Pipelines → Analytics/ML/GenAI → Streamlit Dashboard
 ```
 
 ### Producer
@@ -43,13 +44,38 @@ The consumer reads events from Redpanda and writes them into the `raw_events` Po
 
 PostgreSQL stores raw data, cleaned data, analytics marts, model outputs, recommendation outputs, and GenAI outputs.
 
+### Apache Airflow
+
+Apache Airflow orchestrates the end-to-end data workflows.
+
+Responsibilities include:
+
+```text
+Scheduling ETL jobs
+Managing ML and recommendation workflows
+Running GenAI enrichment tasks
+Monitoring pipeline execution
+Handling task dependencies and retries
+Providing DAG-level observability
+```
+
+Example Airflow DAGs:
+
+```text
+event_pipeline_dag
+analytics_pipeline_dag
+churn_training_dag
+recommendation_pipeline_dag
+genai_pipeline_dag
+```
+
 ### Pipeline
 
 The pipeline transforms raw events into structured analytical tables and runs downstream intelligence jobs.
 
 ### Dashboard
 
-The Streamlit dashboard provides an interface for viewing all analytics, ML, recommendation, GenAI, and pipeline health outputs.
+The Streamlit dashboard provides an interface for viewing all analytics, ML, recommendation, GenAI, Airflow pipeline status, and operational health outputs.
 
 ---
 
@@ -88,6 +114,26 @@ device_quality_metrics
 ```
 
 These tables power the executive overview, content analytics, country analytics, and playback-quality dashboards.
+
+### Airflow Orchestration Flow
+
+Typical orchestration sequence:
+
+```text
+Ingestion DAG
+    ↓
+Cleaning DAG
+    ↓
+Analytics DAG
+    ↓
+ML & Recommendation DAG
+    ↓
+GenAI DAG
+    ↓
+Dashboard Refresh
+```
+
+Airflow manages dependencies between each stage to ensure reliable execution and recoverability.
 
 ---
 
@@ -154,6 +200,19 @@ recommended_action
 
 This turns model predictions into operational retention actions.
 
+### Airflow ML Automation
+
+Airflow automates ML workflows including:
+
+```text
+Feature generation
+Model training
+Model evaluation
+Prediction refresh
+Metrics tracking
+Scheduled retraining
+```
+
 ---
 
 ## 5. Recommendation System
@@ -214,6 +273,20 @@ model_based_enabled
 user_cf_enabled
 item_cf_enabled
 content_based_enabled
+```
+
+### Airflow Recommendation Scheduling
+
+Airflow schedules recommendation refresh jobs daily or hourly depending on workload requirements.
+
+Tasks include:
+
+```text
+User similarity computation
+Content embedding refresh
+Hybrid score generation
+Recommendation publishing
+Metrics validation
 ```
 
 ---
@@ -296,6 +369,19 @@ Purpose:
 
 ```text
 Generate content summaries, mood tags, search keywords, audience segments, and recommendation blurbs.
+```
+
+### Airflow GenAI Automation
+
+Airflow orchestrates GenAI tasks including:
+
+```text
+Executive summary generation
+Retention campaign generation
+Content enrichment refresh
+Failure retries
+Scheduled execution
+Dependency management
 ```
 
 ### AI Analytics Copilot
@@ -430,7 +516,7 @@ Device-level quality table
 Purpose:
 
 ```text
-Show data engineering pipeline health.
+Show data engineering and orchestration pipeline health.
 ```
 
 Metrics:
@@ -441,6 +527,9 @@ Clean watch events
 Clean business events
 Event type distribution
 Latest raw events
+Airflow DAG status
+Task success/failure counts
+Pipeline runtime metrics
 ```
 
 ---
@@ -472,6 +561,18 @@ python -m venv venv
 .\venv\Scripts\python.exe consumer\consume_events.py
 ```
 
+### Run Airflow
+
+```powershell
+docker compose up airflow-webserver airflow-scheduler -d
+```
+
+### Initialize Airflow
+
+```powershell
+docker compose run airflow-init
+```
+
 ### Run pipeline
 
 ```powershell
@@ -486,6 +587,12 @@ $env:PYTHONPATH = "C:\Users\HP\Desktop\streamflix"
 .\venv\Scripts\python.exe -m src.genai_summary
 .\venv\Scripts\python.exe -m src.genai_retention_campaigns
 .\venv\Scripts\python.exe -m src.genai_content_enrichment
+```
+
+### Access Airflow UI
+
+```text
+http://localhost:8080
 ```
 
 ### Run dashboard
@@ -504,6 +611,7 @@ This project uses synthetic data. Therefore:
 Model scores are used to validate the workflow.
 Recommendation outputs demonstrate system design.
 GenAI outputs demonstrate integration and product use cases.
+Airflow orchestration demonstrates production-style workflow management.
 The project should not be interpreted as trained on real customer behavior.
 ```
 
@@ -515,6 +623,7 @@ This project demonstrates the ability to build a complete data product:
 
 ```text
 Backend event streaming
+Workflow orchestration with Apache Airflow
 Data warehouse design
 Data pipeline development
 ML workflow implementation
@@ -522,4 +631,5 @@ Recommendation engine design
 GenAI integration
 Dashboard design
 Business-facing analytics storytelling
+Production-style pipeline monitoring
 ```
